@@ -145,6 +145,60 @@
     text-align: center;
 }
 
+/* ==========================================
+   📁 分類群組（手風琴展開/收合）
+   ========================================== */
+.nav-group-header {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 24px;
+    background: none;
+    border: none;
+    border-left: 3px solid transparent;
+    color: rgba(255, 255, 255, 0.85);
+    font-size: 0.95rem;
+    font-family: inherit;
+    cursor: pointer;
+    text-align: left;
+    transition: background 0.2s ease;
+}
+.nav-group-header:active {
+    background: rgba(255, 255, 255, 0.08);
+}
+.nav-group-header span:nth-child(2) {
+    flex: 1;
+}
+.nav-chevron {
+    font-size: 0.75rem;
+    transition: transform 0.3s ease;
+    color: rgba(255, 255, 255, 0.5);
+}
+/* 群組展開時，標題變亮、箭頭翻轉 */
+.nav-group.open .nav-group-header {
+    color: #ffffff;
+    border-left-color: #38bdf8;
+}
+.nav-group.open .nav-chevron {
+    transform: rotate(180deg);
+}
+
+.nav-group-list {
+    list-style: none;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.3s ease;
+    background: rgba(0, 0, 0, 0.15);
+}
+.nav-group.open .nav-group-list {
+    max-height: 400px; /* 給足夠空間讓群組內項目完整展開 */
+}
+.nav-group-list a {
+    padding: 12px 24px 12px 48px;
+    font-size: 0.9rem;
+}
+
 /* 當前頁面高亮 */
 .nav-list a.current {
     background: rgba(255, 255, 255, 0.1);
