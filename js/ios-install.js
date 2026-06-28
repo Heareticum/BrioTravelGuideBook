@@ -15,11 +15,14 @@
         return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
     }
 
-    // 判斷是不是用 Safari 開啟（排除 iOS 上的 Chrome、Line 內建瀏覽器等，
-    // 因為這些瀏覽器的「加入主畫面」操作路徑不同，提示文字會對不上）
-    function isSafari() {
+    // 判斷是不是用「支援加入主畫面」的iOS瀏覽器開啟
+    // iOS上的Chrome/Firefox/Edge底層都還是用WebKit(蘋果規定)，
+    // 點分享按鈕叫出來的也是同一個iOS系統分享選單，一樣有「加入主畫面」選項，
+    // 所以不需要排除，只需要排除LINE這種「內建瀏覽器」，
+    // 因為LINE內建瀏覽器是封閉環境，分享選單往往沒有「加入主畫面」這個選項
+    function isSupportedBrowser() {
         const ua = navigator.userAgent;
-        return /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|Line/.test(ua);
+        return !/Line/.test(ua);
     }
 
     // 判斷是不是已經是「加入主畫面後啟動」的狀態（已安裝就不用再提示）
@@ -34,7 +37,7 @@
     }
 
     function shouldShowBanner() {
-        return isIOS() && isSafari() && !isStandalone() && !isDismissed();
+        return isIOS() && isSupportedBrowser() && !isStandalone() && !isDismissed();
     }
 
     function createBanner() {
@@ -46,7 +49,7 @@
             <div class="ios-install-icon">📲</div>
             <div class="ios-install-text">
                 將手冊加入主畫面，離線也能隨時查看<br>
-                <span class="ios-install-sub">點擊下方分享圖示 → 加入主畫面</span>
+                <span class="ios-install-sub">點擊瀏覽器的分享圖示 → 加入主畫面</span>
             </div>
         `;
         document.body.appendChild(banner);
