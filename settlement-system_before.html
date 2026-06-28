@@ -255,6 +255,9 @@
 </head>
 <body>
 
+<!-- 🍔 側邊導覽列插入點（由 js/nav.js 動態載入內容） -->
+<div id="nav-placeholder"></div>
+
 <div class="container">
     
     <div class="user-identity-block">
@@ -750,6 +753,20 @@
     }
 
     initUI();
+</script>
+
+<!-- 🍔 載入側邊導覽列邏輯 -->
+<script src="js/nav.js"></script>
+
+<!-- 🔧 註冊 Service Worker（支援離線與安裝） -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then((reg) => console.log('Service Worker 註冊成功：', reg.scope))
+                .catch((err) => console.error('Service Worker 註冊失敗：', err));
+        });
+    }
 </script>
 </body>
 </html>
