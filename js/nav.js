@@ -43,18 +43,28 @@
         navClose.addEventListener('click', closeNav);
         navOverlay.addEventListener('click', closeNav);
 
-        // 點擊導覽連結後（手機版）自動收起選單
+        // 📁 分類群組：點擊標題展開/收合
+        sideNav.querySelectorAll('.nav-group-header').forEach((header) => {
+            header.addEventListener('click', () => {
+                const group = header.closest('.nav-group');
+                group.classList.toggle('open');
+            });
+        });
+
+        // 點擊導覽連結後（手機版）自動收起整個選單
         sideNav.querySelectorAll('a').forEach((link) => {
             link.addEventListener('click', () => {
                 if (window.innerWidth < 992) closeNav();
             });
         });
 
-        // 高亮目前所在頁面
+        // 高亮目前所在頁面，並自動展開該頁面所屬的群組
         const currentFile = window.location.pathname.split('/').pop() || 'index.html';
         sideNav.querySelectorAll('a').forEach((link) => {
             if (link.dataset.page === currentFile) {
                 link.classList.add('current');
+                const parentGroup = link.closest('.nav-group');
+                if (parentGroup) parentGroup.classList.add('open');
             }
         });
 
