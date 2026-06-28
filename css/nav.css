@@ -168,6 +168,9 @@
         max-width: 260px;
         border-left: 1px solid rgba(255, 255, 255, 0.12);
     }
+    .nav-close {
+        display: none;
+    }
     /* 電腦版時，把主內容往左推，避免被側邊欄蓋住 */
     body.has-side-nav-desktop {
         padding-right: 260px;
