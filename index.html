@@ -190,6 +190,13 @@
         .forecast-icon { font-size: 1.4rem; margin: 2px 0; }
         .forecast-temp { font-size: 0.95rem; font-weight: bold; }
         .forecast-rain { font-size: 0.75rem; color: #38bdf8; font-weight: 500; }
+        .forecast-loading {
+            width: 100%;
+            text-align: center;
+            padding: 20px 0;
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.6);
+        }
 
         /* 2. 大標題樣式 */
         .title-image-wrapper {
@@ -619,49 +626,81 @@
         ];
 
         // ==========================================
-        // 🌤️【分區數據】那霸、恩納、名護的三地氣象模擬資料
+        // 🌤️【分區座標】那霸、恩納、名護三地的經緯度
+        // 只存座標，不再存死的天氣數據，實際天氣會用Open-Meteo API動態抓取
         // ==========================================
-        const WEATHER_DATA = {
-            naha: {
-                name: "那霸", icon: "☀️", temp: "32°C",
-                forecast: [
-                    { time: "11:00", icon: "☀️", temp: "32°C", rain: "💧 10%" },
-                    { time: "12:00", icon: "☀️", temp: "32°C", rain: "💧 10%" },
-                    { time: "13:00", icon: "☀️", temp: "33°C", rain: "💧 15%" },
-                    { time: "14:00", icon: "⛅", temp: "31°C", rain: "💧 20%" },
-                    { time: "15:00", icon: "⛅", temp: "31°C", rain: "💧 30%" },
-                    { time: "16:00", icon: "🌧️", temp: "29°C", rain: "💧 60%" },
-                    { time: "17:00", icon: "🌧️", temp: "28°C", rain: "💧 80%" },
-                    { time: "18:00", icon: "☁️", temp: "27°C", rain: "💧 40%" }
-                ]
-            },
-            onna: {
-                name: "恩納", icon: "⛅", temp: "30°C",
-                forecast: [
-                    { time: "11:00", icon: "⛅", temp: "30°C", rain: "💧 20%" },
-                    { time: "12:00", icon: "⛅", temp: "31°C", rain: "💧 25%" },
-                    { time: "13:00", icon: "☁️", temp: "30°C", rain: "💧 40%" },
-                    { time: "14:00", icon: "🌧️", temp: "28°C", rain: "💧 75%" },
-                    { time: "15:00", icon: "🌧️", temp: "27°C", rain: "💧 90%" },
-                    { time: "16:00", icon: "⛈️", temp: "26°C", rain: "💧 85%" },
-                    { time: "17:00", icon: "⛅", temp: "28°C", rain: "💧 30%" },
-                    { time: "18:00", icon: "☀️", temp: "29°C", rain: "💧 10%" }
-                ]
-            },
-            nago: {
-                name: "名護", icon: "☀️", temp: "33°C",
-                forecast: [
-                    { time: "11:00", icon: "☀️", temp: "31°C", rain: "💧 0%" },
-                    { time: "12:00", icon: "☀️", temp: "33°C", rain: "💧 5%" },
-                    { time: "13:00", icon: "☀️", temp: "34°C", rain: "💧 10%" },
-                    { time: "14:00", icon: "☀️", temp: "33°C", rain: "💧 10%" },
-                    { time: "15:00", icon: "☀️", temp: "32°C", rain: "💧 15%" },
-                    { time: "16:00", icon: "⛅", temp: "31°C", rain: "💧 20%" },
-                    { time: "17:00", icon: "⛅", temp: "30°C", rain: "💧 20%" },
-                    { time: "18:00", icon: "☁️", temp: "29°C", rain: "💧 30%" }
-                ]
-            }
+        const REGION_COORDS = {
+            naha: { name: "那霸", lat: 26.2124, lon: 127.6809 },
+            onna: { name: "恩納", lat: 26.5039, lon: 127.8418 },
+            nago: { name: "名護", lat: 26.5917, lon: 127.9772 }
         };
+
+        // 同一次瀏覽期間，已經抓過的區域資料先暫存在記憶體裡，
+        // 避免使用者來回切換標籤時，每次都重新打一次API
+        const weatherCache = {};
+
+        // 把Open-Meteo回傳的WMO天氣代碼轉成對應的emoji圖示
+        // 對照表參考：https://open-meteo.com/en/docs (WMO Weather interpretation codes)
+        function getWeatherIcon(code) {
+            if (code === 0) return '☀️';
+            if (code === 1 || code === 2) return '⛅';
+            if (code === 3) return '☁️';
+            if (code === 45 || code === 48) return '🌫️';
+            if ([51, 53, 55, 56, 57].includes(code)) return '🌦️';
+            if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return '🌧️';
+            if ([71, 73, 75, 77, 85, 86].includes(code)) return '🌨️';
+            if ([95, 96, 99].includes(code)) return '⛈️';
+            return '🌤️';
+        }
+
+        // 呼叫Open-Meteo API，抓取指定區域「現在起8個小時」的逐時預報
+        async function fetchWeather(regionKey) {
+            const region = REGION_COORDS[regionKey];
+            const url = `https://api.open-meteo.com/v1/forecast?latitude=${region.lat}&longitude=${region.lon}&hourly=temperature_2m,precipitation_probability,weather_code&timezone=Asia%2FTokyo`;
+
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('天氣API回應失敗：' + res.status);
+            const data = await res.json();
+
+            const times = data.hourly.time;
+            const now = new Date();
+            // 找出「現在」對應在逐時陣列裡的位置，從這裡開始往後取8個時段
+            let startIndex = times.findIndex(t => new Date(t) >= now);
+            if (startIndex === -1) startIndex = 0;
+
+            const forecast = [];
+            for (let i = startIndex; i < startIndex + 8 && i < times.length; i++) {
+                const dt = new Date(times[i]);
+                const hh = String(dt.getHours()).padStart(2, '0');
+                forecast.push({
+                    time: `${hh}:00`,
+                    icon: getWeatherIcon(data.hourly.weather_code[i]),
+                    temp: `${Math.round(data.hourly.temperature_2m[i])}°C`,
+                    rain: `💧 ${Math.round(data.hourly.precipitation_probability[i])}%`
+                });
+            }
+
+            const current = forecast[0] || { icon: '🌤️', temp: '--°C' };
+            return {
+                name: region.name,
+                icon: current.icon,
+                temp: current.temp,
+                forecast: forecast
+            };
+        }
+
+        // 取得區域資料：先看記憶體快取有沒有，沒有才連網抓
+        async function loadRegionData(regionKey) {
+            if (weatherCache[regionKey]) return weatherCache[regionKey];
+            try {
+                const data = await fetchWeather(regionKey);
+                weatherCache[regionKey] = data;
+                return data;
+            } catch (e) {
+                console.error('天氣資料讀取失敗：', e);
+                return null;
+            }
+        }
 
         // ==========================================
         // 🌤️【天氣控制】切換分區標籤與彈窗邏輯
@@ -676,37 +715,50 @@
         function openWeather() {
             weatherDrawer.classList.add('open');
             modalOverlay.classList.add('open');
-            renderForecast(currentRegion); // 開啟時渲染
+            switchRegion(currentRegion); // 開啟時重新渲染目前選定的區域
         }
         function closeWeather() {
             weatherDrawer.classList.remove('open');
             modalOverlay.classList.remove('open');
         }
 
-        // 切換分區核心邏輯
-        function switchRegion(regionKey) {
+        // 更新首頁極簡小膠囊顯示
+        function updateWidget(data) {
+            document.getElementById('widgetRegion').innerText = data.name;
+            document.getElementById('widgetIcon').innerText = data.icon;
+            document.getElementById('widgetTemp').innerText = data.temp;
+        }
+
+        // 切換分區核心邏輯（改成 async，因為要等API抓資料）
+        async function switchRegion(regionKey) {
             currentRegion = regionKey;
-            
-            // 1. 更新 Tabs 按鈕高亮狀態
-            const buttons = document.querySelectorAll('.tab-btn');
-            buttons.forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
 
-            // 2. 更新首頁極簡小膠囊顯示
-            document.getElementById('widgetRegion').innerText = WEATHER_DATA[regionKey].name;
-            document.getElementById('widgetIcon').innerText = WEATHER_DATA[regionKey].icon;
-            document.getElementById('widgetTemp').innerText = WEATHER_DATA[regionKey].temp;
+            // 1. 更新 Tabs 按鈕高亮狀態（只有使用者點擊時event才存在，初次載入時跳過這段）
+            if (typeof event !== 'undefined' && event && event.target) {
+                const buttons = document.querySelectorAll('.tab-btn');
+                buttons.forEach(btn => btn.classList.remove('active'));
+                event.target.classList.add('active');
+            }
 
-            // 3. 重新渲染每小時詳細預報
-            renderForecast(regionKey);
+            // 2. 顯示讀取中狀態，避免在等待API回應時畫面看起來像沒反應
+            forecastContainer.innerHTML = '<div class="forecast-loading">讀取天氣資料中...</div>';
+
+            // 3. 抓資料（有快取就直接用，沒有才連網）
+            const data = await loadRegionData(regionKey);
+            if (!data) {
+                forecastContainer.innerHTML = '<div class="forecast-loading">天氣資料讀取失敗，請檢查網路連線</div>';
+                return;
+            }
+
+            // 4. 更新畫面
+            updateWidget(data);
+            renderForecast(data.forecast);
         }
 
         // 渲染預報卡片
-        function renderForecast(regionKey) {
+        function renderForecast(forecastList) {
             forecastContainer.innerHTML = '';
-            const data = WEATHER_DATA[regionKey].forecast;
-            
-            data.forEach(item => {
+            forecastList.forEach(item => {
                 const card = document.createElement('div');
                 card.className = 'forecast-card';
                 card.innerHTML = `
@@ -725,8 +777,11 @@
             if (e.target.className === 'drawer-handle') closeWeather();
         });
 
-        // 預先載入預設區域
-        renderForecast(currentRegion);
+        // 頁面載入時，先抓一次預設區域（那霸）的資料，更新首頁小膠囊
+        // 這樣使用者還沒點開抽屜，也能在小膠囊上看到「真實」的當前天氣，不是假資料
+        loadRegionData(currentRegion).then(data => {
+            if (data) updateWidget(data);
+        });
 
         // ==========================================
         // ⏱️ 智慧三階段時間軸狀態控制
