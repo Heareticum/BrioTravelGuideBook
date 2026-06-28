@@ -158,6 +158,9 @@
 </head>
 <body>
 
+<!-- 🍔 側邊導覽列插入點（由 js/nav.js 動態載入內容） -->
+<div id="nav-placeholder"></div>
+
 <div id="syncBanner" class="sync-banner"></div>
 
 <div class="container">
@@ -679,6 +682,20 @@
     function showStatus(msg, type) { const el = document.getElementById('statusMsg'); el.textContent = msg; el.className = `status-msg status-${type}`; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3500); }
 
     window.onload = function() { loadFromSheet(); };
+</script>
+
+<!-- 🍔 載入側邊導覽列邏輯 -->
+<script src="js/nav.js"></script>
+
+<!-- 🔧 註冊 Service Worker（支援離線與安裝） -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then((reg) => console.log('Service Worker 註冊成功：', reg.scope))
+                .catch((err) => console.error('Service Worker 註冊失敗：', err));
+        });
+    }
 </script>
 </body>
 </html>
