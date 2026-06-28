@@ -59,18 +59,15 @@
         });
 
         // 高亮目前所在頁面，並自動展開該頁面所屬的群組
+        // 直接比對 href，不再額外維護 data-page，避免兩邊沒同步而失效
         const currentFile = window.location.pathname.split('/').pop() || 'index.html';
         sideNav.querySelectorAll('a').forEach((link) => {
-            if (link.dataset.page === currentFile) {
+            const linkFile = link.getAttribute('href').split('/').pop();
+            if (linkFile === currentFile) {
                 link.classList.add('current');
                 const parentGroup = link.closest('.nav-group');
                 if (parentGroup) parentGroup.classList.add('open');
             }
         });
-
-        // 電腦版時讓主內容自動留出側邊欄空間
-        if (window.innerWidth >= 992) {
-            document.body.classList.add('has-side-nav-desktop');
-        }
     }
 })();
