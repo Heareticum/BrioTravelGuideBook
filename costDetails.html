@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>旅費明細</title>
+
+    <!-- 🔧 PWA 設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="stylesheet" href="css/nav.css">
+
+    <style>
+        :root {
+            --primary-color: #2a6f97;
+            --secondary-color: #a9d6e5;
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --accent-color: #e63946;
+            --card-bg: #ffffff;
+            --gray-text: #6c757d;
+            --light-gray: #94a3b8;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.5;
+            padding: 0 15px;
+            min-height: 100dvh;
+        }
+
+        .container { max-width: 600px; margin: 0 auto; padding-bottom: 120px; }
+
+        /* 置頂狀態通知橫幅 (不擠壓網頁本體空間) */
+        .sync-banner {
+            position: fixed; top: 0; left: 0; width: 100%; z-index: 4000;
+            text-align: center; padding: 10px 15px; font-size: 0.9rem; font-weight: bold;
+            color: white; transform: translateY(-100%); transition: transform 0.3s ease;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .sync-banner.show { transform: translateY(0); }
+        .sync-banner.updating { background-color: #3b82f6; } 
+        .sync-banner.success { background-color: #10b981; }  
+
+        .rate-banner {
+            text-align: center; background-color: #e2e8f0; color: #475569; padding: 8px 15px;
+            font-size: 0.85rem; font-weight: bold; border-radius: 0 0 12px 12px; margin-bottom: 25px;
+            border: 1px solid #cbd5e1; border-top: none; margin-top: 0;
+        }
+
+        section {
+            background-color: var(--card-bg); border-radius: 12px; padding: 15px;
+            margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+        }
+
+        section h2 { color: var(--primary-color); border-left: 5px solid var(--primary-color); padding-left: 10px; margin-bottom: 15px; font-size: 1.25rem; }
+        .sub-heading { font-size: 1.05rem; color: #334155; margin: 20px 0 10px 0; font-weight: bold; }
+        .item-list { display: flex; flex-direction: column; gap: 10px; }
+
+        /* 總覽樣式 */
+        .item-card-static { background: #fff; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+        .item-header-static { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 6px; }
+        .item-title-static { font-weight: bold; font-size: 0.95rem; color: #1e293b; }
+        .item-tw-price-static { font-weight: bold; color: #0f172a; font-size: 0.95rem; white-space: nowrap; }
+        .item-formula-static { font-size: 0.85rem; color: var(--gray-text); margin-bottom: 4px; background: #f1f5f9; padding: 4px 8px; border-radius: 4px; display: inline-block; }
+
+        /* 試算器樣式 */
+        .calculator-title { cursor: default; user-select: none; -webkit-user-select: none; outline: none; }
+
+        /* 管理員解鎖面板 */
+        .admin-lock-panel { display: none; background: #f1f5f9; padding: 10px; border-radius: 8px; margin-bottom: 15px; gap: 8px; }
+        .admin-lock-panel input { flex: 1; padding: 8px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        .admin-lock-panel button { background: #0ea5e9; color: white; border: none; padding: 8px 15px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+
+        /* 管理員按鈕列 */
+        .admin-action-bar { display: none; gap: 8px; margin-bottom: 15px; }
+        .btn-manage { background: var(--primary-color); color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; flex: 1; }
+        .btn-add-new { background: #0ea5e9; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.95rem; flex: 1; }
+
+        .control-strip { background-color: #f1f5f9; padding: 12px; border-radius: 8px; margin-bottom: 12px; display: flex; align-items: center; }
+        .control-strip label { display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 600; width: 100%; }
+        input[type="checkbox"] { width: 22px; height: 22px; cursor: pointer; accent-color: #0ea5e9; }
+
+        .list-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .loading-msg { text-align: center; color: #94a3b8; padding: 20px; font-size: 0.95rem; }
+        
+        /* 動態骨架屏樣式 */
+        .skeleton-card {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%; animation: loadingSkeleton 1.5s infinite;
+            height: 76px; border-radius: 8px; border: 1px solid #e2e8f0;
+        }
+        @keyframes loadingSkeleton { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* 試算項目卡片手機優化 */
+        .calc-item-card { background-color: #f8fafc; border: 1px solid #e2e8f0; border-radius: 6px; padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+        .calc-item-row-top { display: flex; align-items: center; gap: 10px; width: 100%; }
+        
+        .calc-item-row-bottom { display: flex; justify-content: space-between; align-items: center; padding-left: 32px; width: 100%; }
+        .cell-name { font-weight: 600; font-size: 0.95rem; flex: 1; }
+
+        .quantity-controller { display: inline-flex; align-items: center; border: 1px solid #cbd5e1; border-radius: 6px; background: #fff; overflow: hidden; flex-shrink: 0; }
+        .qty-btn { background: #f1f5f9; border: none; width: 28px; height: 28px; font-weight: bold; cursor: pointer; }
+        .qty-val { width: 32px; text-align: center; font-size: 0.95rem; font-weight: bold; }
+
+        .currency-badge { font-size: 0.7rem; font-weight: 700; padding: 2px 7px; border-radius: 99px; margin-left: 4px; }
+        .badge-TWD { background: #dbeafe; color: #1d4ed8; }
+        .badge-JPY { background: #fef9c3; color: #854d0e; }
+        .cell-cost { color: #0284c7; font-weight: 700; font-size: 1.05rem; text-align: right; flex: 1; }
+
+        .total-section { display: flex; flex-direction: column; gap: 8px; background-color: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 10px; font-weight: bold; color: #166534; }
+        .total-row { display: flex; justify-content: space-between; align-items: center; }
+        .total-amount { font-size: 1.3rem; color: #15803d; }
+        .status-msg { text-align: center; font-size: 0.85rem; padding: 8px; border-radius: 6px; margin-bottom: 10px; line-height: 1.4; }
+        .status-success { background: #dcfce7; color: #166534; }
+        .status-error { background: #fee2e2; color: #991b1b; }
+
+        /* 彈窗樣式保持不變 */
+        .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); display: none; justify-content: center; align-items: center; z-index: 2000; padding: 20px; }
+        .modal-box { background: white; padding: 20px; border-radius: 12px; width: 100%; max-width: 480px; box-shadow: 0 4px 20px rgba(0,0,0,0.15); max-height: 90vh; overflow-y: auto; }
+        .modal-title { font-size: 1.15rem; font-weight: bold; margin-bottom: 15px; color: var(--primary-color); }
+        .modal-fields { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+        .modal-fields label { font-size: 0.85rem; font-weight: bold; color: #475569; margin-bottom: -4px; }
+        .modal-buttons { display: flex; justify-content: flex-end; gap: 10px; }
+        .btn-cancel { background: #e2e8f0; color: #334155; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; }
+        .btn-save { background: #0ea5e9; color: white; border: none; padding: 10px 16px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        input[type="text"], input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #cbd5e1; border-radius: 6px; font-size: 0.95rem; background: white; }
+        input[disabled] { background: #f1f5f9; color: #94a3b8; cursor: not-allowed; }
+        .input-row { display: flex; gap: 8px; }
+        .same-price-row { display: flex; align-items: center; gap: 8px; background: #f0fdf4; border: 1px solid #bbf7d0; padding: 8px 12px; border-radius: 6px; }
+        .same-price-row input[type="checkbox"] { width: 18px; height: 18px; }
+        .same-price-row label { font-size: 0.85rem; color: #166534; font-weight: 600; cursor: pointer; margin: 0; }
+        .manage-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; max-height: 50vh; overflow-y: auto; }
+        .manage-item-row { display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px 14px; cursor: pointer; }
+        .manage-item-name { font-weight: 600; font-size: 0.95rem; }
+        .manage-item-cat { font-size: 0.78rem; color: var(--gray-text); }
+        .manage-item-arrow { color: #94a3b8; font-size: 1.1rem; }
+        .btn-delete-manage { background: #fee2e2; color: #dc2626; border: 1px solid #fca5a5; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-weight: 600; flex-shrink: 0; margin-left: 8px; }
+        .bank-list { list-style: none; }
+        .bank-item { background-color: #f8fafc; padding: 12px; border-radius: 8px; margin-bottom: 10px; border: 1px solid #e2e8f0; }
+        .bank-no-row { display: flex; justify-content: space-between; align-items: center; margin-top: 5px; }
+        .bank-no { font-family: monospace; font-size: 1.1rem; font-weight: bold; color: #0f172a; }
+        .copy-btn { background-color: var(--primary-color); color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-size: 0.85rem; }
+        .toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,0.85); color: white; padding: 10px 24px; border-radius: 30px; font-size: 0.9rem; opacity: 0; transition: opacity 0.2s; pointer-events: none; z-index: 3000; }
+        .toast.show { opacity: 1; }
+
+        @media (min-width: 480px) {
+            .calc-item-card { flex-direction: row; justify-content: space-between; align-items: center; }
+            .calc-item-row-top { width: auto; flex: 1; }
+            .calc-item-row-bottom { width: auto; justify-content: flex-end; gap: 20px; padding-left: 0; flex: 1; }
+            .cell-cost { min-width: 110px; }
+        }
+    </style>
+</head>
+<body>
+
+<div id="syncBanner" class="sync-banner"></div>
+
+<div class="container">
+    <div class="rate-banner">💡 提示：日幣匯率統一以 0.20 計算</div>
+
+    <div id="main-content">
+        <section>
+            <h2>📊 全團明細總覽</h2>
+            <div class="sub-heading">🛩️ 交通費用</div>
+            <div id="list-transport" class="item-list"></div>
+            <div class="sub-heading">🏨 住宿費用</div>
+            <div id="list-accommodation" class="item-list"></div>
+            <div class="sub-heading">🤿 其他行程與保險</div>
+            <div id="list-others" class="item-list"></div>
+        </section>
+
+        <section>
+            <h2 class="calculator-title" id="calcHeader" onclick="triggerAdminEgg()">📋 行程費用試算器</h2>
+
+            <div class="admin-lock-panel" id="adminLockPanel">
+                <input type="password" id="adminPassInput" placeholder="請輸入管理員解鎖密碼...">
+                <button onclick="verifyAdminPassword()">解鎖管理</button>
+            </div>
+
+            <div class="admin-action-bar" id="adminActionBar">
+                <button class="btn-manage" onclick="openManageModal()">📋 管理現有項目</button>
+                <button class="btn-add-new" onclick="openAddModal()">＋ 新增項目</button>
+            </div>
+
+            <div id="statusMsg" class="status-msg" style="display:none;"></div>
+
+            <div class="control-strip">
+                <label><input type="checkbox" id="selectAll" onclick="toggleAll(this)"><span>全選 / 全不選</span></label>
+            </div>
+
+            <div class="list-container" id="itemContainer"></div>
+
+            <div class="total-section">
+                <div class="total-row"><span>🇹🇼 台幣小計</span><span class="total-amount">NT$ <span id="totalTWD">0</span></span></div>
+                <div class="total-row"><span>🇯🇵 日幣小計</span><span class="total-amount">¥ <span id="totalJPY">0</span></span></div>
+            </div>
+        </section>
+
+        <section>
+            <h2>💳 匯款資訊</h2>
+            <p style="margin-bottom:12px;color:var(--gray-text);font-size:0.9rem;">統一匯款給 <strong>Ob</strong>，並請備註寫上自己是誰：</p>
+            <ul class="bank-list">
+                <li class="bank-item">
+                    <div>🏛️ <strong>國泰世華 (013)</strong></div>
+                    <div class="bank-no-row"><span id="target1" class="bank-no">025500136343</span><button class="copy-btn" onclick="copyText('target1')">複製</button></div>
+                </li>
+                <li class="bank-item">
+                    <div>🏛️ <strong>台新銀行 (812)</strong></div>
+                    <div class="bank-no-row"><span id="target2" class="bank-no">21121000062483</span><button class="copy-btn" onclick="copyText('target2')">複製</button></div>
+                </li>
+            </ul>
+        </section>
+    </div>
+</div>
+
+<div class="modal-overlay" id="manageModal"><div class="modal-box"><div class="manage-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;"><div class="modal-title" style="margin-bottom:0;">📋 管理現有項目</div><span class="manage-count" id="manageCount" style="font-size:0.85rem; color:var(--gray-text); font-weight:bold;"></span></div><div class="manage-list" id="manageList"></div><div class="modal-buttons"><button class="btn-cancel" onclick="closeManageModal()">關閉</button></div></div></div>
+<div class="modal-overlay" id="addModal"><div class="modal-box"><div class="modal-title">＋ 新增行程項目</div><div class="modal-fields"><label>項目主名稱</label><input type="text" id="addItemName" placeholder="如：去程機票 (虎航)"><label>總覽分類區塊</label><select id="addItemCategory"><option value="">🚫 不登錄總覽（僅試算器）</option><option value="🛩️ 交通費用">🛩️ 交通費用</option><option value="🏨 住宿費用">🏨 住宿費用</option><option value="🤿 行程與保險">🤿 行程與保險</option></select><label>總覽小字備註</label><input type="text" id="addItemSubtext" placeholder="如：FunPass，可留空"><label>結算幣別</label><select id="addItemCurrency"><option value="TWD">🇹🇼 台幣 TWD</option><option value="JPY">🇯🇵 日幣 JPY</option></select><label style="margin-top:4px;">成員計價配置</label><div class="input-row"><input type="number" id="addItemAdultCost" placeholder="成人價格" min="0" oninput="syncAddChildCost()"><input type="number" id="addItemAdultCount" placeholder="成人總數" min="0"></div><div class="same-price-row"><input type="checkbox" id="addSamePrice" onchange="toggleAddSamePrice()"><label for="addSamePrice">幼童與成人相同價格（試算器不分列）</label></div><div class="input-row"><input type="number" id="addItemChildCost" placeholder="幼童價格 (無則為0)" min="0"><input type="number" id="addItemChildCount" placeholder="幼童總數 (無則為0)" min="0"></div></div><div class="modal-buttons"><button class="btn-cancel" onclick="closeAddModal()">取消</button><button class="btn-save" id="addSaveBtn" onclick="addItem()">發布並儲存</button></div></div></div>
+<div class="modal-overlay" id="editModal"><div class="modal-box"><div class="modal-title">✏️ 編輯行程項目與計價規格</div><div class="modal-fields"><input type="hidden" id="editItemIndex"><label>項目主名稱</label><input type="text" id="editItemName"><label>總覽分類區塊</label><select id="editItemCategory"><option value="">🚫 不登錄總覽（僅留在試算器）</option><option value="🛩️ 交通費用">🛩️ 交通費用</option><option value="🏨 住宿費用">🏨 住宿費用</option><option value="🤿 行程與保險">🤿 行程與保險</option></select><label>總覽小字備註</label><input type="text" id="editItemSubtext"><label>結算幣別</label><select id="editItemCurrency"><option value="TWD">🇹🇼 台幣 TWD</option><option value="JPY">🇯🇵 日幣 JPY</option></select><label style="margin-top:4px;">成員計價配置</label><div class="input-row"><input type="number" id="editItemAdultCost" placeholder="成人單價" min="0" oninput="syncEditChildCost()"><input type="number" id="editItemAdultCount" placeholder="全團成人數" min="0"></div><div class="same-price-row"><input type="checkbox" id="editSamePrice" onchange="toggleEditSamePrice()"><label for="editSamePrice">幼童與成人相同價格（試算器不分列）</label></div><div class="input-row"><input type="number" id="editItemChildCost" placeholder="幼童單價 (無則為0)" min="0"><input type="number" id="editItemChildCount" placeholder="全團幼童數 (無則為0)" min="0"></div></div><div class="modal-buttons"><button class="btn-cancel" onclick="handleEditCancel()">取消</button><button class="btn-save" id="saveEditBtn" onclick="saveItemEdit()">儲存更新</button></div></div></div>
+<div class="modal-overlay" id="deleteConfirmModal" style="z-index: 2100;"><div class="modal-box" style="max-width: 380px; padding: 25px 20px 20px 20px;"><div id="deleteConfirmText" style="text-align: center; color: #1e293b; font-weight: bold; font-size: 1.1rem; line-height: 1.5; margin-bottom: 16px;"></div><div id="deleteWarningSub" style="text-align: center; color: #b91c1c; font-size: 0.82rem; line-height: 1.5; margin-bottom: 24px; background: #fff5f5; padding: 10px 14px; border-radius: 8px; border: 1px solid #fecaca; font-weight: 500;">⚠️ 注意：此動作會同步刪除雲端試算表內的該筆資料，刪除後無法復原！</div><div class="modal-buttons" style="justify-content: center; gap: 12px;"><button class="btn-cancel" onclick="closeDeleteConfirmModal()" style="flex: 1; max-width: 100px;">取消</button><button class="btn-save" id="deleteConfirmBtn" style="background: var(--accent-color); flex: 1; max-width: 120px;" onclick="executeDelete()">確認刪除</button></div></div></div>
+
+<div id="toast" class="toast">已複製帳號到剪貼簿！</div>
+
+<script>
+    const ENABLE_ADMIN_LOCK = true;
+    const ADMIN_PASSWORD = "55688";
+    let isAdminAuthenticated = false;
+    let headerClickCount = 0;
+    let isEditingFromManage = false;
+    let itemIndexToDelete = null;
+
+    const API_URL = "https://script.google.com/macros/s/AKfycbzPwwVr97jz4ugCBdsT-Le7Y3bCkTjQP4_GSmkTZ2Xvlhb-c8tbLucowkvADgjmI4Kg/exec";
+
+    let rawDbData = [];
+    let calcItems = [];
+
+    function showTopBanner(msg, type, duration = 3000) {
+        const banner = document.getElementById('syncBanner');
+        banner.textContent = msg;
+        banner.className = `sync-banner show ${type}`;
+        if (duration > 0) {
+            setTimeout(() => banner.classList.remove('show'), duration);
+        }
+    }
+
+    function hideTopBanner() {
+        document.getElementById('syncBanner').classList.remove('show');
+    }
+
+    // 🌟 修正版：SWR 載入邏輯
+    async function loadFromSheet() {
+        const cachedData = localStorage.getItem('okinawa_travel_data');
+        const cachedVersion = localStorage.getItem('okinawa_travel_version');
+        
+        const hasCache = cachedData && 
+                         cachedData !== "null" && 
+                         cachedData !== "undefined" && 
+                         cachedData !== "[]" && 
+                         cachedVersion && 
+                         cachedVersion !== "null" && 
+                         cachedVersion !== "undefined";
+
+        if (hasCache) {
+            console.log(`[SWR] 命中本地快取！當前版本號: ${cachedVersion}`);
+
+            try {
+                rawDbData = JSON.parse(cachedData);
+                processAndRender(); // 體感0秒：立刻渲染快取畫面
+            } catch (e) {
+                console.error("[SWR] 快取解析失敗，清除壞掉的快取", e);
+                localStorage.removeItem('okinawa_travel_data');
+                localStorage.removeItem('okinawa_travel_version');
+                fetchFullData(false);
+                return;
+            }
+
+            // 背景檢查版號
+            setTimeout(async () => {
+                try {
+                    console.log("[SWR] 開始背景檢查版本號...");
+                    const res = await fetch(`${API_URL}?checkVersion=1&_t=${new Date().getTime()}`);
+                    const json = await res.json();
+                    
+                    if (json && json.status === "ok") {
+                        // 💡 關鍵修正：同時相容後端吐出的 version 或 nextVersion
+                        const rawVer = json.version !== undefined ? json.version : json.nextVersion;
+                        const serverVer = String(rawVer).trim();
+                        const localVer = String(cachedVersion).trim();
+                        
+                        console.log(`[SWR] 比對結果 -> 線上: ${serverVer} | 本地: ${localVer}`);
+                        
+                        if (serverVer !== "undefined" && serverVer !== localVer) {
+                            console.log("[SWR] 版本不吻合，啟動背景全量靜默更新...");
+                            fetchFullData(true);
+                        } else {
+                            console.log("[SWR] 版本完全一致，流程完美結束！");
+                        }
+                    }
+                } catch (err) {
+                    console.warn("[SWR] 背景版號查詢失敗，繼續沿用舊快取。", err);
+                }
+            }, 300);
+
+        } else {
+            console.log("[SWR] 本地無合法快取，顯示骨架屏並進行首次載入...");
+            const container = document.getElementById('itemContainer');
+            container.innerHTML = `
+                <div class="skeleton-card"></div>
+                <div class="skeleton-card" style="margin-top:10px;"></div>
+                <div class="skeleton-card" style="margin-top:10px;"></div>`;
+            fetchFullData(false);
+        }
+    }
+
+    // 🌟 修正版：全量下載與精準內容比對
+    async function fetchFullData(isSilentUpdate = false) {
+        if (isSilentUpdate) {
+            showTopBanner("🔄 發現新行程資料，正在背景同步中...", "updating", 0);
+        }
+
+        try {
+            const res = await fetch(`${API_URL}?_t=${new Date().getTime()}`);
+            const json = await res.json();
+            
+            if (json && json.status === "ok" && Array.isArray(json.data)) {
+                let isSameContent = false;
+                const currentCacheStr = localStorage.getItem('okinawa_travel_data');
+                
+                if (isSilentUpdate && currentCacheStr) {
+                    try {
+                        const localObj = JSON.parse(currentCacheStr);
+                        if (Array.isArray(localObj)) {
+                            // 清洗比對結構，防止欄位順序或新增 payload 干擾
+                            const localClean = localObj.map(i => ({ id: String(i.id), name: String(i.name) }));
+                            const serverClean = json.data.map(i => ({ id: String(i.id), name: String(i.name) }));
+                            
+                            if (JSON.stringify(localClean) === JSON.stringify(serverClean)) {
+                                isSameContent = true;
+                            }
+                        }
+                    } catch(e) {
+                        isSameContent = false;
+                    }
+                }
+                
+                // 拿後端最安全的版號字串
+                const targetVersion = json.version !== undefined ? json.version : json.nextVersion;
+
+                if (isSilentUpdate && isSameContent) {
+                    console.log("[SWR] 背景下載完成，核心內容無變動。僅更新版本快取，跳過二次渲染。");
+                    localStorage.setItem('okinawa_travel_version', String(targetVersion).trim());
+                    hideTopBanner();
+                    return;
+                }
+
+                rawDbData = json.data;
+                localStorage.setItem('okinawa_travel_data', JSON.stringify(json.data));
+                localStorage.setItem('okinawa_travel_version', String(targetVersion).trim());
+                
+                processAndRender();
+
+                if (isSilentUpdate) {
+                    showTopBanner("✅ 行程已更新至最新版本！", "success", 3000);
+                }
+            } else {
+                if (!isSilentUpdate) showStatus("讀取失敗: 資料格式異常", "error");
+                hideTopBanner();
+            }
+        } catch (err) {
+            console.error("[SWR] 全量下載發生致命錯誤", err);
+            if (!isSilentUpdate) showStatus("連線失敗，請檢查網路狀態", "error");
+            hideTopBanner();
+        }
+    }
+
+    function triggerAdminEgg() {
+        if (!ENABLE_ADMIN_LOCK || isAdminAuthenticated) return;
+        headerClickCount++;
+        if (headerClickCount >= 5) {
+            headerClickCount = 0;
+            document.getElementById('adminLockPanel').style.display = 'flex';
+            document.getElementById('adminPassInput').focus();
+        }
+    }
+
+    function verifyAdminPassword() {
+        if (document.getElementById('adminPassInput').value === ADMIN_PASSWORD) {
+            isAdminAuthenticated = true;
+            document.getElementById('adminLockPanel').style.display = 'none';
+            document.getElementById('adminActionBar').style.display = 'flex';
+            processAndRender();
+            showStatus("🔓 管理員權限解鎖成功！", "success");
+        } else {
+            showStatus("❌ 密碼錯誤！", "error");
+        }
+    }
+
+    function processAndRender() {
+        renderStaticOverview();
+
+        const currentCheckedStatus = {};
+        const currentCounts = {};
+        calcItems.forEach(item => { 
+            currentCheckedStatus[item.calcKey] = item.checked; 
+            currentCounts[item.calcKey] = item.count;
+        });
+
+        calcItems = [];
+        rawDbData.forEach((dbItem, index) => {
+            const samePrice = Number(dbItem.same_price) === 1;
+
+            if (samePrice) {
+                const kMerged = `${dbItem.id}_merged`;
+                calcItems.push({
+                    dbIndex: index,
+                    calcKey: kMerged,
+                    displayName: dbItem.name,
+                    cost: Number(dbItem.adult_cost),
+                    currency: dbItem.currency,
+                    count: currentCounts[kMerged] !== undefined ? currentCounts[kMerged] : 1,
+                    checked: currentCheckedStatus[kMerged] !== undefined ? currentCheckedStatus[kMerged] : true
+                });
+            } else {
+                if (Number(dbItem.adult_cost) > 0 || Number(dbItem.adult_count) > 0) {
+                    const kAdult = `${dbItem.id}_adult`;
+                    calcItems.push({
+                        dbIndex: index,
+                        calcKey: kAdult,
+                        displayName: Number(dbItem.child_count) > 0 ? `${dbItem.name} - 成人` : dbItem.name,
+                        cost: Number(dbItem.adult_cost),
+                        currency: dbItem.currency,
+                        count: currentCounts[kAdult] !== undefined ? currentCounts[kAdult] : 1,
+                        checked: currentCheckedStatus[kAdult] !== undefined ? currentCheckedStatus[kAdult] : true
+                    });
+                }
+                if (Number(dbItem.child_count) > 0) {
+                    const kChild = `${dbItem.id}_child`;
+                    calcItems.push({
+                        dbIndex: index,
+                        calcKey: kChild,
+                        displayName: `${dbItem.name} - 幼童`,
+                        cost: Number(dbItem.child_cost),
+                        currency: dbItem.currency,
+                        count: currentCounts[kChild] !== undefined ? currentCounts[kChild] : 1,
+                        checked: currentCheckedStatus[kChild] !== undefined ? currentCheckedStatus[kChild] : false
+                    });
+                }
+            }
+        });
+
+        renderCalcList();
+    }
+
+    function renderStaticOverview() {
+        const fragments = {
+            'list-transport':     document.createDocumentFragment(),
+            'list-accommodation': document.createDocumentFragment(),
+            'list-others':        document.createDocumentFragment()
+        };
+
+        rawDbData.forEach(item => {
+            if (!item.category) return;
+
+            let targetId = 'list-others';
+            if (item.category.includes('交通')) targetId = 'list-transport';
+            if (item.category.includes('住宿')) targetId = 'list-accommodation';
+
+            const aCost  = Number(item.adult_cost);
+            const aCount = Number(item.adult_count);
+            const cCost  = Number(item.child_cost);
+            const cCount = Number(item.child_count);
+            const samePrice = Number(item.same_price) === 1;
+            
+            const totalCost = samePrice ? aCost * (aCount + cCount) : (aCost * aCount) + (cCost * cCount);
+            const sign = item.currency === "JPY" ? "¥" : "$";
+
+            let formulaText = cCount > 0 
+                ? `成人 ${sign}${aCost.toLocaleString()} × ${aCount} + 幼童 ${sign}${cCost.toLocaleString()} × ${cCount}`
+                : `成人 ${sign}${aCost.toLocaleString()} × ${aCount}`;
+
+            const subtextBlock = item.subtext ? `<div style="font-size:0.8rem;color:var(--gray-text);margin-top:2px;">${item.subtext}</div>` : '';
+            const jpyLine = item.currency === "JPY" ? `<div style="font-size:0.8rem;color:var(--gray-text);margin-top:4px;">日幣總計: ${totalCost.toLocaleString()} JPY</div>` : '';
+
+            const wrapper = document.createElement('div');
+            wrapper.innerHTML = `
+                <div class="item-card-static">
+                    <div class="item-header-static">
+                        <div style="flex:1;">
+                            <div class="item-title-static">${item.name}</div>
+                            ${subtextBlock}
+                        </div>
+                        <div class="item-tw-price-static">$${Math.round(item.currency === "JPY" ? totalCost * 0.2 : totalCost).toLocaleString()} TWD</div>
+                    </div>
+                    <div class="item-formula-static">${formulaText}</div>
+                    ${jpyLine}
+                </div>`;
+            fragments[targetId].appendChild(wrapper.firstElementChild);
+        });
+
+        Object.entries(fragments).forEach(([id, frag]) => {
+            const el = document.getElementById(id);
+            el.innerHTML = ''; el.appendChild(frag);
+        });
+    }
+
+    function renderCalcList() {
+        const container = document.getElementById('itemContainer');
+        if (calcItems.length === 0) {
+            container.innerHTML = '<div class="loading-msg">尚無項目，請由管理員新增！</div>';
+            calculateTotal(); return;
+        }
+        container.innerHTML = '';
+
+        calcItems.forEach((item, index) => {
+            const symbol = item.currency === "JPY" ? "¥" : "NT$";
+            const badgeClass = item.currency === "JPY" ? "badge-JPY" : "badge-TWD";
+            const rowCost = item.cost * item.count;
+            const card = document.createElement('div');
+            card.className = 'calc-item-card';
+            card.innerHTML = `
+                <div class="calc-item-row-top">
+                    <div class="cell-check"><input type="checkbox" ${item.checked ? 'checked' : ''} onchange="toggleItem(${index}, this.checked)"></div>
+                    <div class="cell-name">${item.displayName}<span class="currency-badge ${badgeClass}">${item.currency}</span></div>
+                </div>
+                <div class="calc-item-row-bottom">
+                    <div class="quantity-controller">
+                        <button class="qty-btn" onclick="updateQty(${index}, -1)">-</button>
+                        <div class="qty-val">${item.count}</div>
+                        <button class="qty-btn" onclick="updateQty(${index}, 1)">+</button>
+                    </div>
+                    <div class="cell-cost">${symbol}${rowCost.toLocaleString()}</div>
+                </div>`;
+            container.appendChild(card);
+        });
+
+        calculateTotal();
+        
+        // 💡 修正點：用靜默方式更新全選框勾選狀態，避免觸發手動點擊事件
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = calcItems.every(i => i.checked);
+        }
+    }
+
+    function openManageModal() {
+        const list = document.getElementById('manageList');
+        list.innerHTML = '';
+        document.getElementById('manageCount').textContent = `共 ${rawDbData.length} 筆`;
+        rawDbData.forEach((item, index) => {
+            const catLabel = item.category || '僅試算器';
+            const row = document.createElement('div');
+            row.className = 'manage-item-row';
+            row.innerHTML = `
+                <div style="flex:1;" onclick="openEditFromManage(${index})">
+                    <div class="manage-item-name">${item.name}</div>
+                    <div class="manage-item-cat">${catLabel}・${item.currency}</div>
+                </div>
+                <button class="btn-delete-manage">刪除</button>
+                <span class="manage-item-arrow" onclick="openEditFromManage(${index})" style="margin-left:6px;">›</span>`;
+            row.querySelector('.btn-delete-manage').addEventListener('click', (e) => { e.stopPropagation(); handleDeleteClick(index); });
+            list.appendChild(row);
+        });
+        document.getElementById('manageModal').style.display = 'flex';
+    }
+
+    function closeManageModal() { document.getElementById('manageModal').style.display = 'none'; }
+    function openEditFromManage(dbIndex) { isEditingFromManage = true; closeManageModal(); openEditModal(dbIndex); }
+    function handleDeleteClick(dbIndex) { itemIndexToDelete = dbIndex; const item = rawDbData[dbIndex]; document.getElementById('deleteConfirmText').innerHTML = `確定要刪除<br>「${item.name}」嗎？`; document.getElementById('deleteConfirmModal').style.display = 'flex'; }
+    function closeDeleteConfirmModal() { document.getElementById('deleteConfirmModal').style.display = 'none'; itemIndexToDelete = null; }
+
+    async function executeDelete() {
+        if (itemIndexToDelete === null) return;
+        const dbIndex = itemIndexToDelete; const item = rawDbData[dbIndex]; const btn = document.getElementById('deleteConfirmBtn');
+        btn.disabled = true; btn.textContent = "正在刪除...";
+        try {
+            const res = await fetch(API_URL, { method: "POST", body: JSON.stringify({ action: "delete", id: item.id }) });
+            const json = await res.json();
+            if (json.status === "ok") {
+                rawDbData.splice(dbIndex, 1);
+                const nextVer = json.version !== undefined ? json.version : json.nextVersion;
+                localStorage.setItem('okinawa_travel_data', JSON.stringify(rawDbData));
+                localStorage.setItem('okinawa_travel_version', String(nextVer).trim());
+                closeDeleteConfirmModal(); openManageModal(); processAndRender();
+                showStatus(`🗑️ 「${item.name}」已成功自雲端刪除`, "success");
+            } else { showStatus("❌ 刪除失敗: " + json.message, "error"); resetDeleteConfirmBtn(); }
+        } catch (e) { showStatus("❌ 連線失敗，無法傳遞指令", "error"); resetDeleteConfirmBtn(); }
+    }
+    function resetDeleteConfirmBtn() { const btn = document.getElementById('deleteConfirmBtn'); btn.disabled = false; btn.textContent = "確認刪除"; }
+
+    function openAddModal() {
+        document.getElementById('addItemName').value = ''; document.getElementById('addItemCategory').value = ''; document.getElementById('addItemSubtext').value = '';
+        document.getElementById('addItemCurrency').value = 'TWD'; document.getElementById('addItemAdultCost').value = ''; document.getElementById('addItemAdultCount').value = '';
+        document.getElementById('addItemChildCost').value = ''; document.getElementById('addItemChildCount').value = ''; document.getElementById('addSamePrice').checked = false;
+        document.getElementById('addItemChildCost').disabled = false; document.getElementById('addModal').style.display = 'flex';
+    }
+    function closeAddModal() { document.getElementById('addModal').style.display = 'none'; }
+    function toggleAddSamePrice() { const checked = document.getElementById('addSamePrice').checked; const input = document.getElementById('addItemChildCost'); input.disabled = checked; if (checked) syncAddChildCost(); else input.value = ''; }
+    function syncAddChildCost() { if (document.getElementById('addSamePrice').checked) document.getElementById('addItemChildCost').value = document.getElementById('addItemAdultCost').value; }
+
+    async function addItem() {
+        const samePrice = document.getElementById('addSamePrice').checked;
+        const payload = {
+            action: "add", name: document.getElementById('addItemName').value.trim(), category: document.getElementById('addItemCategory').value, subtext: document.getElementById('addItemSubtext').value.trim(), currency: document.getElementById('addItemCurrency').value,
+            adult_cost: parseFloat(document.getElementById('addItemAdultCost').value) || 0, adult_count: parseInt(document.getElementById('addItemAdultCount').value) || 0,
+            child_cost: samePrice ? (parseFloat(document.getElementById('addItemAdultCost').value) || 0) : (parseFloat(document.getElementById('addItemChildCost').value) || 0), child_count: parseInt(document.getElementById('addItemChildCount').value) || 0, same_price: samePrice ? 1 : 0
+        };
+        if (!payload.name || payload.adult_cost < 0) { showStatus("❌ 請輸入正確的項目名稱與單價", "error"); return; }
+        const btn = document.getElementById('addSaveBtn'); btn.disabled = true; btn.textContent = "儲存中...";
+        try {
+            const res = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+            const json = await res.json();
+            if (json.status === "ok") {
+                payload.id = json.id; rawDbData.push(payload);
+                const nextVer = json.version !== undefined ? json.version : json.nextVersion;
+                localStorage.setItem('okinawa_travel_data', JSON.stringify(rawDbData));
+                localStorage.setItem('okinawa_travel_version', String(nextVer).trim());
+                closeAddModal(); processAndRender(); showStatus("✅ 全新項目已發布成功！", "success");
+            } else { showStatus("❌ 新增失敗: " + json.message, "error"); }
+        } catch (e) { showStatus("❌ 新增失敗，連線異常", "error"); }
+        btn.disabled = false; btn.textContent = "發布並儲存";
+    }
+
+    function openEditModal(dbIndex) {
+        const item = rawDbData[dbIndex]; const samePrice = Number(item.same_price) === 1;
+        document.getElementById('editItemIndex').value = dbIndex; document.getElementById('editItemName').value = item.name; document.getElementById('editItemSubtext').value = item.subtext || "";
+        document.getElementById('editItemCurrency').value = item.currency; document.getElementById('editItemAdultCost').value = item.adult_cost || ''; document.getElementById('editItemAdultCount').value = item.adult_count || '';
+        document.getElementById('editItemChildCost').value = item.child_cost || ''; document.getElementById('editItemChildCount').value = item.child_count || ''; document.getElementById('editSamePrice').checked = samePrice; document.getElementById('editItemChildCost').disabled = samePrice;
+        const catSelect = document.getElementById('editItemCategory'); const dbCategory = item.category ? item.category.trim() : ""; catSelect.value = "";
+        for (let i = 0; i < catSelect.options.length; i++) { if (catSelect.options[i].value.trim() === dbCategory) { catSelect.value = catSelect.options[i].value; break; } }
+        document.getElementById('editModal').style.display = 'flex';
+    }
+    function closeEditModal() { document.getElementById('editModal').style.display = 'none'; isEditingFromManage = false; }
+    function handleEditCancel() { if (isEditingFromManage) { closeEditModal(); openManageModal(); } else { closeEditModal(); } }
+    function toggleEditSamePrice() { const checked = document.getElementById('editSamePrice').checked; const input = document.getElementById('editItemChildCost'); input.disabled = checked; if (checked) syncEditChildCost(); else input.value = ''; }
+    function syncEditChildCost() { if (document.getElementById('editSamePrice').checked) document.getElementById('editItemChildCost').value = document.getElementById('editItemAdultCost').value; }
+
+    async function saveItemEdit() {
+        const dbIndex = document.getElementById('editItemIndex').value; const targetId = rawDbData[dbIndex].id; const samePrice = document.getElementById('editSamePrice').checked;
+        const payload = {
+            action: "update", id: targetId, name: document.getElementById('editItemName').value.trim(), category: document.getElementById('editItemCategory').value, subtext: document.getElementById('editItemSubtext').value.trim(), currency: document.getElementById('editItemCurrency').value,
+            adult_cost: parseFloat(document.getElementById('editItemAdultCost').value) || 0, adult_count: parseInt(document.getElementById('editItemAdultCount').value) || 0,
+            child_cost: samePrice ? (parseFloat(document.getElementById('editItemAdultCost').value) || 0) : (parseFloat(document.getElementById('editItemChildCost').value) || 0), child_count: parseInt(document.getElementById('editItemChildCount').value) || 0, same_price: samePrice ? 1 : 0
+        };
+        if (!payload.name) { showStatus("❌ 請填寫項目名稱", "error"); return; }
+        const saveBtn = document.getElementById('saveEditBtn'); saveBtn.disabled = true; saveBtn.textContent = "儲存中...";
+        try {
+            const res = await fetch(API_URL, { method: "POST", body: JSON.stringify(payload) });
+            const json = await res.json();
+            if (json.status === "ok") {
+                rawDbData[dbIndex] = { ...payload, id: targetId };
+                const nextVer = json.version !== undefined ? json.version : json.nextVersion;
+                localStorage.setItem('okinawa_travel_data', JSON.stringify(rawDbData));
+                localStorage.setItem('okinawa_travel_version', String(nextVer).trim());
+                closeEditModal(); if (isEditingFromManage) openManageModal(); else processAndRender();
+                showStatus("📝 項目內容已更新成功！", "success");
+            } else { showStatus("❌ 更新失敗: " + json.message, "error"); }
+        } catch (err) { showStatus("❌ 連線錯誤，無法完成更新", "error"); }
+        saveBtn.disabled = false; saveBtn.textContent = "儲存更新";
+    }
+
+    function updateQty(index, delta) { calcItems[index].count = Math.max(1, calcItems[index].count + delta); renderCalcList(); }
+    function toggleItem(index, chk) { calcItems[index].checked = chk; calculateTotal(); document.getElementById('selectAll').checked = calcItems.every(i => i.checked); }
+    function toggleAll(master) { calcItems.forEach(i => i.checked = master.checked); renderCalcList(); }
+
+    function calculateTotal() {
+        let twd = 0, jpy = 0;
+        calcItems.filter(i => i.checked).forEach(i => { if (i.currency === "JPY") jpy += i.cost * i.count; else twd += i.cost * i.count; });
+        document.getElementById('totalTWD').textContent = twd.toLocaleString();
+        document.getElementById('totalJPY').textContent = jpy.toLocaleString();
+    }
+
+    function copyText(id) { const txt = document.getElementById(id).innerText; if (navigator.clipboard && navigator.clipboard.writeText) { navigator.clipboard.writeText(txt).then(() => showToast()).catch(() => fallbackCopy(txt)); } else { fallbackCopy(txt); } }
+    function fallbackCopy(text) { const textArea = document.createElement("textarea"); textArea.value = text; textArea.style.position = "fixed"; textArea.style.left = "-999999px"; textArea.style.top = "-999999px"; document.body.appendChild(textArea); textArea.focus(); textArea.select(); try { if (document.execCommand('copy')) showToast(); else showStatus("📋 複製失敗，請手動複製", "error"); } catch (err) { showStatus("📋 瀏覽器無回應，請手動複製", "error"); } document.body.removeChild(textArea); }
+    function showToast() { const t = document.getElementById('toast'); t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 1500); }
+    function showStatus(msg, type) { const el = document.getElementById('statusMsg'); el.textContent = msg; el.className = `status-msg status-${type}`; el.style.display = 'block'; setTimeout(() => el.style.display = 'none', 3500); }
+
+    window.onload = function() { loadFromSheet(); };
+</script>
+</body>
+</html>
