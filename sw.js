@@ -1,6 +1,6 @@
 // 每次更新網站內容時，記得把版本號改掉（v1 -> v2...），
 // 否則使用者裝置上的舊快取不會更新。
-const CACHE_NAME = 'okinawa-travel-book-v7';
+const CACHE_NAME = 'okinawa-travel-book-v8';
 
 // 注意：這裡用「相對路徑」而不是「/開頭的絕對路徑」，
 // 這樣不管網站部署在 GitHub Pages 的根目錄還是子路徑（例如 /repo-name/）都能正常運作。
@@ -52,6 +52,14 @@ self.addEventListener('activate', (event) => {
 // 2. 其他資源 (CSS/JS/圖片)：優先用快取，沒有才連網抓
 self.addEventListener('fetch', (event) => {
     const request = event.request;
+
+    // 🌤️ 天氣API例外：天氣資料每小時都在變，不適合被快取邏輯處理
+    // （Cache First策略下，第一次抓到的天氣會被永久快取，使用者之後看到的都會是舊資料）
+    // 這裡直接不呼叫 event.respondWith()，等於不攔截，瀏覽器會用預設行為直接連網抓，
+    // 完全不經過上面的快取機制，也不會把回應存進快取。
+    if (request.url.includes('api.open-meteo.com')) {
+        return;
+    }
 
     if (request.mode === 'navigate') {
         event.respondWith(
