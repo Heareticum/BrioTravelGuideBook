@@ -1,0 +1,605 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>航班與住宿</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+:root {
+    --airline-blue: #1a365d;
+    --tigerair-orange: #F6AE1C;
+    --evaair-green: #00a650;
+    --return-slate: #4a5568;
+    --island-teal: #00a896;
+    --bg-color: transparent;
+    --text-main: #2d3748;
+    --text-muted: #718096;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, sans-serif; }
+
+body {
+    background-color: var(--bg-color);
+    color: var(--text-main);
+    display: flex;
+    justify-content: center;
+    padding: 20px 16px calc(40px + env(safe-area-inset-bottom) + 60px) 16px;
+}
+
+/* 📦 最外層大容器 */
+.container {
+    width: 100%;
+    max-width: 900px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+}
+
+/* 📦 大區塊群組打包容器 */
+.travel-section {
+    display: flex;
+    flex-direction: column;
+}
+
+/* 🎯 大區塊標題 */
+.section-title {
+    font-size: 1.35rem;
+    font-weight: 800;
+    color: var(--airline-blue);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 4px 0 4px 12px;
+    position: relative;
+    border-left: 5px solid var(--island-teal);
+    letter-spacing: 0.5px;
+    margin-bottom: 16px;
+}
+
+/* 網格佈局 */
+.responsive-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 20px;
+}
+
+/* ✈️ 機票卡片 */
+.boarding-pass {
+    background: #ffffff;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+}
+.pass-header { background: linear-gradient(135deg, #f67e1c, var(--tigerair-orange)); color: white; padding: 14px 18px; display: flex; justify-content: space-between; align-items: center; }
+.boarding-pass.return .pass-header { background: linear-gradient(135deg, #165836, var(--evaair-green)); }
+.flight-no { font-weight: bold; background: rgba(255,255,255,0.2); padding: 4px 10px; border-radius: 12px; font-size: 0.8rem; }
+.pass-body { padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; background: #ffffff; border-bottom: 2px dashed #cbd5e0; position: relative; }
+.pass-body::before, .pass-body::after { content: ''; position: absolute; bottom: -10px; width: 20px; height: 20px; background: rgba(0,0,0,0.06); border-radius: 50%; }
+.pass-body::before { left: -10px; } .pass-body::after { right: -10px; }
+.airport-code h2 { font-size: 2.0rem; font-weight: 800; color: var(--airline-blue); line-height: 1; }
+.boarding-pass.return .airport-code h2 { color: var(--return-slate); }
+.airport-code p { font-size: 0.75rem; color: var(--text-muted); margin-top: 5px; }
+.flight-path { flex: 1; display: flex; flex-direction: column; align-items: center; position: relative; opacity: 0.8; }
+.flight-path i { color: var(--return-slate); font-size: 1.15rem; z-index: 2; background: #fff; padding: 0 10px; }
+.flight-path::after { content: ''; position: absolute; top: 50%; left: 5%; right: 5%; border-top: 2px dotted #cbd5e0; z-index: 1; }
+.pass-footer { padding: 14px 20px; background: #f7fafc; display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.info-block { display: flex; flex-direction: column;align-items: left; 
+    /* 🌟 新增：統一文字行高，1.25 到 1.3 是最適合中英混排且不撐開高度的設定 */
+    line-height: 1.5;}
+.info-block span:first-child { font-size: 0.68rem; color: var(--text-muted); font-weight: bold; }
+.info-block span:last-child { font-size: 0.88rem; font-weight: bold; margin-top: 3px; }
+
+/* 📎 機票截圖摺疊區塊 */
+.ticket-toggle {
+    border-top: 1px solid #e2e8f0;
+}
+.ticket-toggle summary {
+    padding: 10px 18px;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ticket-toggle summary::-webkit-details-marker { display: none; }
+.ticket-toggle summary:hover { color: var(--island-teal); }
+.pass-image {
+    padding: 0 18px 16px;
+}
+.pass-image img {
+    width: 100%;
+    display: block;
+    border-radius: 8px;
+}
+
+/* 🏨 飯店卡片通用主體 */
+.hotel-card {
+    background: #f8fafc;
+    border-radius: 20px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.15);
+    border: 1px solid #e2e8f0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* 🎯 飯店頂部地址欄位包裹器 */
+.hotel-address-box {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 8px;
+    margin-top: 6px;
+    position: relative;
+    width: 100%;
+}
+
+/* 🎯 飯店地圖跳轉連結文字 */
+.hotel-address-link {
+    font-size: 0.75rem;
+    color: #cbd5e1;
+    text-decoration: underline;
+    line-height: 1.4;
+    transition: color 0.2s;
+    cursor: pointer;
+}
+.hotel-address-link:hover {
+    color: var(--island-teal) !important;
+}
+
+/* 🎯 獨立複製按鈕 */
+.copy-btn {
+    background: rgba(255, 255, 255, 0.22) !important;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    color: #ffffff !important;
+    padding: 2px 7px;
+    border-radius: 6px;
+    font-size: 0.68rem;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+}
+.copy-btn:hover {
+    background: var(--island-teal) !important;
+    border-color: var(--island-teal);
+}
+
+/* 隱藏的輸入框 */
+.hidden-copy-input {
+    position: absolute;
+    width: 0;
+    height: 0;
+    opacity: 0;
+    border: none;
+    padding: 0;
+    margin: 0;
+    z-index: -1;
+}
+
+/* 自製複製成功提示氣泡 */
+.copy-toast {
+    position: absolute;
+    bottom: 125%;
+    right: 0;
+    background: #2d3748;
+    color: #ffffff;
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-size: 0.7rem;
+    font-weight: bold;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(4px);
+    transition: all 0.2s ease;
+    z-index: 10;
+}
+.copy-toast::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    right: 15px;
+    border: 5px solid transparent;
+    border-top-color: #2d3748;
+}
+.copy-toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 🎯 住宿 1 (大飯店)：深海礁岩調漸層 */
+.hotel-card.hotel .hotel-header {
+    background: linear-gradient(135deg, #253741, #0f5285);
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+.hotel-card.hotel .hotel-name h3 { font-size: 1.12rem; font-weight: bold; color: #ffffff; line-height: 1.4; letter-spacing: 0.3px; }
+.hotel-card.hotel .hotel-name p { font-size: 0.75rem; color: #cbd5e1; margin-top: 4px; opacity: 0.9; }
+.hotel-card.hotel summary { color: #2c424f; }
+
+/* 🎯 住宿 2 (地方民宿)：黑潮夜海綠漸層 */
+.hotel-card.minshuku .hotel-header {
+    background: linear-gradient(135deg, #2a3c36, #18694b);
+    padding: 16px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 10px;
+}
+.hotel-card.minshuku .hotel-name h3 { font-size: 1.12rem; font-weight: bold; color: #ffffff; line-height: 1.4; letter-spacing: 0.3px; }
+.hotel-card.minshuku .hotel-name p { font-size: 0.75rem; color: #cbd5e1; margin-top: 4px; opacity: 0.9; }
+.hotel-card.minshuku summary { color: #2a3c36; }
+
+/* 🎯 住宿主要資訊 4 欄位網格 */
+.hotel-meta-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 12px;
+    margin: 0 20px 20px 20px;
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    padding: 12px 14px;
+}
+.meta-item { display: flex; flex-direction: column; }
+.meta-item .meta-label { font-size: 0.68rem; color: var(--text-muted); font-weight: bold; margin-bottom: 2px; }
+.meta-item .meta-value { font-size: 0.85rem; font-weight: bold; color: var(--text-main); }
+
+/* 飯店共用內部元件 */
+.hotel-dates { background: #ffffff; border: 1px solid #e2e8f0; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; font-size: 0.85rem; margin: 20px 20px 12px 20px; }
+.date-box { text-align: center; flex: 1; }
+.date-box .label { font-size: 0.68rem; color: var(--text-muted); margin-bottom: 2px; display: block; }
+.date-box .value { font-weight: bold; color: var(--text-main); display: block; }
+
+/* 🎯 摺疊面板大外殼 */
+details {
+    border: 1px solid #e2e8f0;
+    border-radius: 12px;
+    background: #ffffff;
+    overflow: hidden;
+    margin: 0 20px 20px 20px;
+}
+summary {
+    padding: 12px 14px;
+    font-size: 0.85rem;
+    font-weight: bold;
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    outline: none;
+}
+summary::after { content: '＋'; font-size: 0.9rem; color: var(--text-muted); }
+details[open] > summary::after { content: '－'; }
+
+/* 🎯 多子區塊（巢狀 Accordion）排版 */
+.hotel-info-list {
+    font-size: 0.82rem;
+    color: #4a5568;
+    line-height: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    padding: 12px;
+    border-top: 1px dashed #e2e8f0;
+    background: #f8fafc;
+}
+
+/* 🎯 每個可獨立展開的子項目樣式 */
+.sub-accordion {
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background: #ffffff;
+    overflow: hidden;
+    margin: 0;
+}
+.sub-summary {
+    padding: 8px 12px;
+    font-size: 0.78rem;
+    font-weight: bold;
+    color: var(--text-main);
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.sub-summary::after { content: '▾'; font-size: 0.8rem; color: var(--text-muted); transition: transform 0.2s; }
+.sub-accordion[open] .sub-summary::after { content: '▾'; transform: rotate(180deg); }
+
+/* 子項目展開後的內文容器 */
+.sub-content {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    color: #4a5568;
+    border-top: 1px dashed #edf2f7;
+    line-height: 1.5;
+    background: #ffffff;
+}
+/* 子項目內文中的小圖標 */
+.sub-content i {
+    color: var(--island-teal);
+    margin-right: 6px;
+    width: 14px;
+    text-align: center;
+}
+
+/* 強制防護：只要 details 沒有被使用者點開，內容就絕對必須隱藏 */
+.sub-accordion:not([open]) .sub-content {
+    display: none !important;
+}
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <section class="travel-section">
+            <div class="section-title">
+                <i class="fas fa-plane-departure"></i> 航班資訊
+            </div>
+            <div class="responsive-grid" id="flight-container"></div>
+        </section>
+
+        <section class="travel-section">
+            <div class="section-title">
+                <i class="fas fa-hotel"></i> 住宿資訊
+            </div>
+            <div class="responsive-grid" id="hotel-container"></div>
+        </section>
+    </div>
+
+    <script>
+        // 1. 航班資料陣列：未來需要新增航班，只要在這裡多追加一個物件即可
+        const flightData = [
+            {
+                type: "outbound", // 去程機票樣式
+                airline: "台灣虎航",
+                flightNo: "IT 232",
+                fromCode: "TPE",
+                fromName: "桃園國際機場",
+                toCode: "OKA",
+                toName: "沖繩那霸機場",
+                date: "2026/07/09",
+                boarding: "18:30 / 20:50",
+                flightDuration: "1小時20分",
+                iconStyle: "",
+                ticketImage: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFlight_Info%2FTigerAir_FlightInfo.webp?alt=media&token=91ff413d-c108-4214-b35a-729b78f5c968" // 👈 填入機票圖片路徑，例如 "images/flight1.jpg"
+            },
+            {
+                type: "return", // 回程機票樣式 (套用黑灰 slate 色調)
+                airline: "長榮航空",
+                flightNo: "BR 185",
+                fromCode: "OKA",
+                fromName: "沖繩那霸機場",
+                toCode: "TPE",
+                toName: "桃園國際機場",
+                date: "2026/07/13",
+                boarding: "20:20 / 20:55",
+                flightDuration: "1小時35分",
+                iconStyle: "style='transform: rotate(180deg);'", // 飛機頭朝回飛
+                ticketImage: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFlight_Info%2FEvaAir_FlightInfo.webp?alt=media&token=a6797709-1b59-4646-8e6c-12a965028cf6" // 👈 填入機票圖片路徑
+            }
+        ];
+
+        // 2. 住宿資料陣列：未來需要新增飯店，只要在陣列追加一個物件即可
+        const hotelData = [
+            {
+                id: "hotel-1",
+                styleClass: "hotel", // 大飯店精美深海礁岩色調
+                name: "Y's Inn Naha Oroku Ekimae",
+                address: "〒901-0155 沖縄県那覇市金城５丁目９",
+                addressTextOnly: "〒901-0155 沖縄県那覇市金城５丁目９",
+                mapUrl: "https://maps.app.goo.gl/cQGfsj9F9ZrPWg9D6",
+                checkInDate: "2026/07/09",
+                checkOutDate: "2026/07/10",
+                price: "¥45,001",
+                mapcode: "-----",
+                checkInTime: "16:00 後",
+                checkOutTime: "10:00 前",
+                details: [
+                    {
+                        title: "🏠 房型配置",
+                        content: "• 標準雙床房 *5"
+                    },
+                    {
+                        title: "🛏️ 客房設施",
+                        content: "• 書桌、冰箱、平面電視、 床邊插座<br>• 電熱水壺、空氣清淨機<br>• 獨立空調、暖氣"
+                    },
+                    {
+                        title: "🛁 浴室&用品",
+                        content: "• 浴缸、淋浴間、免費盥洗用品、毛巾<br>• 沖洗座、拖鞋、吹風機、衛生紙"
+                    }
+                ]
+            },
+            {
+                id: "hotel-2",
+                styleClass: "minshuku", // 地方民宿黑潮夜海綠色調
+                name: "戀之沖繩 @ 長浜 民宿(Nayana Hills)",
+                address: "日本沖繩長浜〒904-0324 沖縄県中頭郡読谷村長浜1113-14, Okinawa 904-0324",
+                addressTextOnly: "日本沖繩長浜〒904-0324 沖縄県中頭郡読谷村長浜1113-14, Okinawa 904-0324",
+                mapUrl: "https://maps.app.goo.gl/vRhuciyX6WhVfmqZ9",
+                checkInDate: "2026/07/10",
+                checkOutDate: "2026/07/13",
+                price: "¥210,000",
+                mapcode: "33 883 610*55",
+                checkInTime: "15:00 後",
+                checkOutTime: "10:00 前",
+                details: [
+                    {
+                        title: "🏠 房型配置",
+                        content: "• 4 間客房<br>• 3 張雙人床 / 6 張單人床 / 3 張梳化床<br>• 2 張可移動嬰兒床"
+                    },
+                    {
+                        title: "🛜 室內設備",
+                        content: "• 冷暖空調（全室）<br>• 光纖 Wi-Fi<br>• 3 個免費停車位"
+                    },
+                    {
+                        title: "🍽️ 廚房設備",
+                        content: "• 基本鍋具（鍋、煎鍋、炒鍋）<br>• 微波爐、烤箱、電鍋、冰箱、電水壺、咖啡機<br>• 盤子、杯子、餐具、筷子、洗碗精"
+                    },
+                    {
+                        title: "🛁 浴室&用品",
+                        content: "• 浴缸、淋浴、廁所<br>• 洗髮精、護髮素、沐浴露<br>• 毛巾、浴巾、衛生紙、吹風機"
+                    }
+                ]
+            }
+        ];
+
+        // 3. 自動渲染航班卡片核心函式
+        function renderFlights() {
+            const container = document.getElementById("flight-container");
+            if (!container) return;
+
+            let html = "";
+            flightData.forEach(flight => {
+                const returnClass = flight.type === "return" ? " return" : "";
+                html += `
+                    <div class="boarding-pass${returnClass}">
+                        <div class="pass-header">
+                            <span class="airline-name"><i class="fas fa-plane"></i> ${flight.airline}</span>
+                            <span class="flight-no">${flight.flightNo}</span>
+                        </div>
+                        <div class="pass-body">
+                            <div class="airport-code">
+                                <h2>${flight.fromCode}</h2>
+                                <p>${flight.fromName}</p>
+                            </div>
+                            <div class="flight-path">
+                                <i class="fas fa-plane" ${flight.iconStyle}></i>
+                            </div>
+                            <div class="airport-code" style="text-align: right;">
+                                <h2>${flight.toCode}</h2>
+                                <p>${flight.toName}</p>
+                            </div>
+                        </div>
+                        <div class="pass-footer">
+                            <div class="info-block"><span>搭乘日期</span><span>${flight.date}</span></div>
+                            <div class="info-block"><span>出發/抵達時間</span><span>${flight.boarding}</span></div>
+                            <div class="info-block"><span>飛行時長</span><span>${flight.flightDuration}</span></div>
+                        </div>
+                        ${flight.ticketImage ? `
+                        <details class="ticket-toggle">
+                            <summary><i class="fas fa-paperclip"></i> 查看電子機票截圖</summary>
+                            <div class="pass-image">
+                                <img src="${flight.ticketImage}" alt="${flight.airline} 機票">
+                            </div>
+                        </details>` : ""}
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // 4. 自動渲染飯店與其內部巢狀摺疊面板核心函式
+        function renderHotels() {
+            const container = document.getElementById("hotel-container");
+            if (!container) return;
+
+            let html = "";
+            hotelData.forEach((hotel, idx) => {
+                // 生成子摺疊面板 HTML
+                let subPanelHtml = "";
+                hotel.details.forEach(detail => {
+                    subPanelHtml += `
+                        <details class="sub-accordion">
+                            <summary class="sub-summary">${detail.title}</summary>
+                            <div class="sub-content">${detail.content}</div>
+                        </details>
+                    `;
+                });
+
+                html += `
+                    <div class="hotel-card ${hotel.styleClass}">
+                        <div class="hotel-header">
+                            <div class="hotel-name">
+                                <h3>${hotel.name}</h3>
+                                <div class="hotel-address-box">
+                                    <input type="text" class="hidden-copy-input" id="addr-${idx}" value="${hotel.addressTextOnly}" readonly>
+                                    <a href="${hotel.mapUrl}" target="_blank" class="hotel-address-link">${hotel.address}</a>
+                                    <button class="copy-btn" onclick="safeCopy('addr-${idx}', 'toast-${idx}')"><i class="far fa-copy"></i> 複製</button>
+                                    <div class="copy-toast" id="toast-${idx}">已複製地址！</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="hotel-dates">
+                            <div class="date-box">
+                                <span class="label">CHECK-IN DATE</span>
+                                <span class="value">${hotel.checkInDate}</span>
+                            </div>
+                            <i class="fas fa-moon" style="color: var(--return-slate); opacity: 0.5;"></i>
+                            <div class="date-box">
+                                <span class="label">CHECK-OUT DATE</span>
+                                <span class="value">${hotel.checkOutDate}</span>
+                            </div>
+                        </div>
+
+                        <div class="hotel-meta-grid">
+                            <div class="meta-item">
+                                <span class="meta-label">Check in 時間</span>
+                                <span class="meta-value">${hotel.checkInTime}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">Check out 時間</span>
+                                <span class="meta-value">${hotel.checkOutTime}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">總價</span>
+                                <span class="meta-value">${hotel.price}</span>
+                            </div>
+                            <div class="meta-item">
+                                <span class="meta-label">MapCode</span>
+                                <span class="meta-value">${hotel.mapcode}</span>
+                            </div>
+                        </div>
+
+                        <details>
+                            <summary>查看詳細資訊</summary>
+                            <div class="hotel-info-list">${subPanelHtml}</div>
+                        </details>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        // 5. 高防護原生地址拷貝指令函式
+        function safeCopy(inputId, toastId) {
+            var copyText = document.getElementById(inputId);
+            copyText.style.width = "100px";
+            copyText.style.height = "20px";
+
+            copyText.select();
+            copyText.setSelectionRange(0, 99999);
+            document.execCommand("copy");
+
+            copyText.style.width = "0";
+            copyText.style.height = "0";
+
+            var toast = document.getElementById(toastId);
+            toast.classList.add("show");
+
+            setTimeout(function() {
+                toast.classList.remove("show");
+            }, 1500);
+        }
+
+        // 6. 網格完全載入時，執行初始化渲染
+        document.addEventListener("DOMContentLoaded", function() {
+            renderFlights();
+            renderHotels();
+        });
+    </script>
+</body>
+</html>

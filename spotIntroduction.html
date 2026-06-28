@@ -1,0 +1,1636 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>景點/美食介紹</title>
+    <style>
+        :root {
+            --primary-color: #94a3b8; /* 柔和霧藍灰 */
+            --secondary-color: #475569; /* 石岩灰藍 */
+            --food-accent-color: #a3b19b; /* 溫柔鼠尾草綠 */
+            --food-secondary-color: #6b7a63; /* 內斂茶綠 */
+            --text-color: #1f2937;
+            --bg-color: #f3f4f6;
+            --card-bg: #ffffff;
+            --placeholder-bg: #f8fafc;
+        }
+
+        html {
+            scroll-behavior: smooth; 
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans TC", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 0; 
+        }
+
+        /* ==========================================
+           雙層置頂固定導覽列外框 (動態換色版)
+           ========================================== */
+        .sticky-header {
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            background-color: #94a3b8; /* 行程主題：柔和霧藍灰 */
+            border-bottom: 1px solid #cbd5e1;
+            padding: 12px 0 8px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: background-color 0.3s ease, border-color 0.3s ease; 
+        }
+
+        /* 美食模式下的頂部列背景 */
+        .food-view-active .sticky-header {
+            background-color: #a3b19b; /* 美食主題：溫柔鼠尾草綠 */
+            border-bottom: 1px solid #cbd5e1;
+        }
+
+        .header-inner {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 0 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        /* 主頁籤 (Tabs) 外框 —— 💡 提案一：全面輕量化，降低外框色彩深度 */
+        .main-tabs {
+            display: flex;
+            background-color: #78889b; /* 💡 從 #475569 調亮為柔灰藍，消除沉重感 */
+            padding: 4px;
+            border-radius: 8px;
+            transition: background-color 0.3s ease;
+        }
+
+        /* 美食模式下的頁籤外框 */
+        .food-view-active .main-tabs {
+            background-color: #8a9982; /* 💡 從 #6b7a63 調亮為青苔綠，更顯清爽 */
+        }
+
+        .tab-btn {
+            flex: 1;
+            background: none;
+            border: none;
+            padding: 8px 16px;
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: rgba(255, 255, 255, 0.85); /* 提高未選取時的白透度，更易讀 */
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .tab-btn:hover {
+            color: #ffffff; 
+        }
+
+        /* 💡 當前選中按鈕：改用帶有環境色的極淺灰，文字換用內斂深色，徹底根除刺眼光暈 */
+        .tab-btn.active {
+            background-color: #f8fafc; /* 💡 使用極淺藍灰，取代高對比純白 */
+            color: #334155; /* 搭配沈穩的灰藍字體 */
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+        }
+
+        .food-view-active .tab-btn.active {
+            background-color: #f4f6f3; /* 💡 使用極淺綠灰，完美平衡色彩 */
+            color: #4d5947; /* 搭配內斂茶綠字體 */
+        }
+
+        /* 子導覽列（橫向捲動膠囊） */
+        .sub-nav {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 4px;
+            -webkit-overflow-scrolling: touch;
+            min-height: 38px;
+            align-items: center;
+        }
+
+        .sub-nav::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* 適合明亮背景的舒適襯色膠囊按鈕 */
+        .sub-nav-btn {
+            flex-shrink: 0;
+            background-color: rgba(255, 255, 255, 0.35); 
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: rgba(0, 0, 0, 0.65); 
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        /* 懸停與選取狀態 */
+        .sub-nav-btn:hover, .sub-nav-btn:active {
+            border-color: #ffffff;
+            color: #475569;
+            background-color: #ffffff;
+        }
+
+        .food-view-active .sub-nav-btn:hover, 
+        .food-view-active .sub-nav-btn:active {
+            border-color: #ffffff;
+            color: #6b7a63;
+            background-color: #ffffff;
+        }
+
+        /* ==========================================
+           主要的檢視區與卡片排版
+           ========================================== */
+        .container {
+            max-width: 800px;
+            margin: 20px auto 0 auto;
+            padding: 0 16px calc(60px + env(safe-area-inset-bottom) + 60px) 16px;
+            box-sizing: border-box;
+            /*padding-bottom: calc(100vh - 160px); */
+        }
+
+        .tab-view {
+            display: none;
+        }
+
+        .tab-view.active-view {
+            display: block;
+        }
+
+        /* 行程大標題與美食大區塊 Banner 樣式 */
+        .date-title, .food-main-title {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #ffffff;
+            padding: 12px 20px;
+            border-radius: 8px;
+            margin-top: 35px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.03);
+            scroll-margin-top: 140px; 
+        }
+
+        .date-title {
+            background-color: var(--secondary-color); 
+        }
+
+        .food-main-title {
+            background-color: var(--food-secondary-color); 
+            margin-top: 50px;
+            margin-bottom: 15px;
+        }
+
+        .food-category-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #374151;
+            background-color: #e5e7eb;
+            padding: 6px 16px;
+            border-radius: 6px;
+            margin-top: 5px;
+            margin-bottom: 15px;
+            display: inline-block;
+            scroll-margin-top: 140px;
+        }
+
+        /* 景點與美食卡片主體 */
+        .spot-card {
+            background-color: var(--card-bg);
+            border-radius: 12px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.05);
+            padding: 24px;
+            margin-bottom: 24px;
+            scroll-margin-top: 140px; 
+        }
+
+        .spot-main-content {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .spot-image-square {
+            width: 367px;
+            height: 250px;
+            flex-shrink: 0;
+            background-color: var(--placeholder-bg);
+            border-radius: 8px;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            box-sizing: border-box;
+        }
+
+        .spot-image-placeholder {
+            border: 1px dashed #cbd5e1;
+            color: #94a3b8;
+            font-size: 0.8rem;
+            text-align: center;
+            padding: 10px;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .spot-image-placeholder::before {
+            content: "📷";
+            font-size: 1.5rem;
+            margin-bottom: 4px;
+        }
+
+        .spot-image-square img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .spot-text-info {
+            flex-grow: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .spot-name {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-top: 0;
+            margin-bottom: 8px;
+            color: #111827;
+            line-height: 1.3;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px; 
+        }
+
+        .spot-name-link {
+            color: #111827;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 6px;
+            transition: color 0.2s ease;
+        }
+
+        .spot-name-link:hover {
+            color: var(--secondary-color);
+        }
+
+        .food-view-active .spot-name-link:hover {
+            color: var(--food-secondary-color);
+        }
+
+        .spot-name-link .globe-icon {
+            color: var(--secondary-color);
+            font-size: 1.2rem;
+        }
+        
+        .food-view-active .spot-name-link .globe-icon {
+            color: var(--food-secondary-color);
+        }
+
+        .food-price-sub {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: #4b5563; 
+            background-color: #f3f4f6;
+            padding: 2px 10px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+
+        .reserved-time-tag {
+            font-size: 0.85rem;
+            font-weight: 700;
+            color: #ffffff;
+            background-color: #dc2626;
+            padding: 3px 10px;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            width: fit-content;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(220, 38, 38, 0.15);
+        }
+
+        .spot-toolbar {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .toolbar-btn {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #4b5563;
+            background-color: #e2e8f0;
+            padding: 4px 12px;
+            border-radius: 20px;
+            text-decoration: none;
+            transition: all 0.2s ease;
+        }
+
+        .toolbar-btn:hover {
+            background-color: var(--secondary-color);
+            color: #ffffff;
+        }
+
+        .food-view-active .toolbar-btn:hover {
+            background-color: var(--food-secondary-color);
+        }
+
+        .toolbar-tag {
+            display: inline-flex;
+            align-items: center;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #64748b;
+            background-color: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            padding: 3px 11px;
+            border-radius: 20px;
+        }
+
+        .spot-description {
+            font-size: 0.95rem;
+            color: #4b5563;
+            margin: 0;
+            text-align: justify;
+        }
+
+        .spot-dropdown-group {
+            display: flex;
+            gap: 16px;
+        }
+
+        .dropdown-item {
+            flex: 1;
+            background-color: #f8fafc;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            height: fit-content;
+        }
+
+        .dropdown-item[open] {
+            background-color: #f1f5f9;
+        }
+
+        summary {
+            font-size: 0.95rem;
+            font-weight: 600;
+            padding: 12px 14px;
+            cursor: pointer;
+            outline: none;
+            user-select: none;
+            color: var(--secondary-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .food-view-active summary {
+            color: var(--food-secondary-color);
+        }
+
+        summary::after {
+            content: "▼";
+            font-size: 0.7rem;
+            color: #94a3b8;
+            transition: transform 0.2s;
+        }
+
+        .dropdown-item[open] summary::after {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-inner {
+            padding: 0 14px 14px 14px;
+            font-size: 0.9rem;
+            color: #334155;
+            border-top: 1px solid #e2e8f0;
+            padding-top: 10px;
+        }
+
+        .dropdown-inner ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .dropdown-inner li {
+            margin-bottom: 6px;
+        }
+
+        .inner-spot-link {
+            color: var(--secondary-color);
+            text-decoration: none;
+            border-bottom: 1px dashed var(--secondary-color);
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .inner-spot-link:hover {
+            color: var(--primary-color);
+            border-bottom-style: solid;
+        }
+
+        .food-view-active .inner-spot-link {
+            color: var(--food-secondary-color);
+            border-bottom-color: var(--food-secondary-color);
+        }
+
+        .food-view-active .inner-spot-link:hover {
+            color: #4d5947;
+        }
+
+        /* 右下角智慧懸浮回頂部按鈕 (FAB) */
+        .back-to-top {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 46px;
+            height: 46px;
+            border-radius: 50%;
+            background-color: #1f2937; 
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            font-weight: bold;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 999;
+        }
+
+        .back-to-top.show {
+            opacity: 0.9;
+            visibility: visible;
+        }
+
+        .back-to-top:hover {
+            opacity: 1;
+            transform: translateY(-2px);
+            background-color: var(--secondary-color); 
+        }
+
+        .food-view-active .back-to-top:hover {
+            background-color: var(--food-secondary-color); 
+        }
+
+        @media (max-width: 640px) {
+            .spot-main-content {
+                flex-direction: column;
+            }
+
+            .spot-image-square {
+                width: 100%;
+                height: 250px;
+            }
+
+            .spot-dropdown-group {
+                flex-direction: column;
+                gap: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="sticky-header">
+        <div class="header-inner">
+            <div class="main-tabs">
+                <button class="tab-btn active" onclick="switchTab('itinerary')">景點介紹</button>
+                <button class="tab-btn" onclick="switchTab('food')">美食推薦</button>
+            </div>
+            <div class="sub-nav" id="sub-nav-container"></div>
+        </div>
+    </div>
+
+    <div class="container">
+        <div id="itinerary-view" class="tab-view active-view">
+            <div id="itinerary-container"></div>
+        </div>
+        
+        <div id="food-view" class="tab-view">
+            <div id="reserved-section-container"></div>
+            <div id="all-foods-section-container"></div>
+        </div>
+    </div>
+
+    <button id="back-to-top" class="back-to-top" onclick="scrollToTop()">▲</button>
+
+    <script>
+        let currentTab = 'itinerary';
+        let foodNavMode = 'main'; 
+
+        const reservationsData = [
+            { 
+                name: "島豬與琉球牛 燦別邸", 
+                branchName: "", 
+                time: "7/11 17:30",  
+                link: "https://lailai-web.com/san-bettei/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FRaout.webp?alt=media&token=7987b548-af78-47b9-b560-fd2c850a27e6",
+                price: "￥750 - ￥13,200",
+                mapUrl: "https://maps.app.goo.gl/s5LCAZao67BBYrwY7",
+                desc: "各界名人也會訂位私下探訪的優質餐廳。最優質的A5級日本產<strong>黑毛和牛</strong>,以及含繼承了75%琉球當地黑毛豬血估的「<strong>島黑</strong>」、吃沖繩特產鳳梨長大的「<strong>高級鳳梨Agu豬</strong>」在內共3種Agu豬(阿古豬),都是僅於此才能享受到的美味。還有使用罕見水晶鍋的涮涮鍋與搭配秘傳醬汁的絕品壽喜燒,都能讓您一飽口福。"
+            },
+            { 
+                name: "燒肉本部牧場 本部總店", 
+                branchName: "", 
+                time: "7/12 17:30",  
+                link: "https://mimigo.tw/motobu-farm/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FHonbu.webp?alt=media&token=d71c112c-4ab8-463e-be4a-7be3b09c70ad",
+                price: "￥150 - ￥16,000",
+                mapUrl: "https://maps.app.goo.gl/zMFzf4TEh1kqPmuK6",
+                desc: "<strong>焼肉もとぶ牧場（燒肉本部牧場）</strong>是牧場直營的餐廳，他們家的牛肉是自家牧場精心培育的和牛，其特點為軟嫩鮮甜的肉質與超美的油花分布，外觀並沒有說非常光鮮亮麗，但就是提供大家實打實的美味燒肉。<br><br>大推薦他們家的午間套餐，只要￥1500~2800就能吃到豐盛又美味的牛排＆燒肉，非常超值。"
+            }
+        ];
+
+        const foodsData = [
+            //=====🥩 燒肉=====
+            { 
+                id: "food-honbu", 
+                name: "燒肉本部牧場", 
+                link: "https://mimigo.tw/motobu-farm/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FHonbu_2.webp?alt=media&token=6ed2627f-26aa-4ba3-9138-465450911c3d", 
+                category: "🥩 燒肉", 
+                price: "￥150 - ￥16,000",
+                mapLinks: [ 
+                    { branch: "本部總店", url: "https://maps.app.goo.gl/zMFzf4TEh1kqPmuK6" },
+                    { branch: "名護店", url: "https://maps.app.goo.gl/3J9eB2oUbDuv8xFJ9" },
+                    { branch: "那霸店", url: "https://maps.app.goo.gl/WGZ4M5UeyKGMhtcP8" },
+                    { branch: "國際通店", url: "https://maps.app.goo.gl/WTHE8w3Bvfi2Peo2A" },
+                 ],
+                desc: "<strong>焼肉もとぶ牧場（燒肉本部牧場）</strong>是牧場直營的餐廳，他們家的牛肉是自家牧場精心培育的和牛，其特點為軟嫩鮮甜的肉質與超美的油花分布，外觀並沒有說非常光鮮亮麗，但就是提供大家實打實的美味燒肉。" 
+            },
+            { 
+                id: "food-shishiya", 
+                name: "肉屋ししや", 
+                link: "https://shin.tw/okinawa-shishiya/#google_vignette",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FShishiya.webp?alt=media&token=38579369-a713-43a1-ba43-daf3dc3eda27", 
+                category: "🥩 燒肉", 
+                price: "￥300 - ￥4,000+",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/TSDgPmE7wxbrhskU9" } ],
+                desc: "<strong>肉屋ししや</strong>主打沖繩鐵板燒，鐵板燒師傅現煎牛排，還可以吃到頂級A5+12黑毛和牛，當然想吃石垣牛、阿古豬也都有，不過很多旅客也會選擇外帶他們家的<strong>炙燒和牛握壽司</strong> !" 
+            },
+            { 
+                id: "food-liuchiucow", 
+                name: "琉球的牛", 
+                link: "https://bobbyfun.tw/2023-05-01-2338/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FLiuchiuCow.webp?alt=media&token=afb519d3-c7d8-469b-a7b6-d190c7974d8c", 
+                category: "🥩 燒肉", 
+                price: "￥380 - ￥11,780",
+                mapLinks: [ 
+                    { branch: "那霸國際通", url: "https://maps.app.goo.gl/EoExkri5tiAnJS3dA" }, 
+                    { branch: "恩納本館", url: "https://maps.app.goo.gl/trFiBMXVkASnj4e88" }, 
+                    { branch: "恩納別館", url: "https://maps.app.goo.gl/2q9ZjRTP6nRCKuhGA" }, 
+                ],
+                desc: "<strong>琉球的牛 (琉球の牛) </strong>是許多網友狂推必嘗的沖繩燒肉，原因就在店家精選不輸給名牌牛肉的無名牛，讓大家能用超值價格品嘗到美味牛肉。" 
+            },
+            { 
+                id: "food-buchi", 
+                name: "炭火焼肉ぶち", 
+                link: "https://mamahuhu.blog/overseas/buchi-kumojiten/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FBuchi.webp?alt=media&token=2890daff-2793-4b7b-a29a-56f52370c7fd", 
+                category: "🥩 燒肉", 
+                price: "￥220 - ￥5,680",
+                mapLinks: [ 
+                    { branch: "炭火焼肉ぶち 久茂地店", url: "https://maps.app.goo.gl/V5xoB4dT5a8PZLRe7" },
+                    { branch: "炭火焼肉ぶち 久茂地2号店", url: "https://maps.app.goo.gl/j6cmGyD3UYSH9Cnh9" },
+                 ],
+                desc: "Buchi Kumojiten 的菜單以單點為主，不是吃到飽，主要提供<strong>黑毛和牛拼盤</strong>、<strong>牛舌</strong>、各部位和牛、雞肉，以及<strong>阿古豬</strong>等選擇。" 
+            },
+            { 
+                id: "food-sukiyaki", 
+                name: "WAGYU SUKIYAKI 極〜GOKU〜", 
+                link: "https://www.threads.com/@fta8716/post/DTjPfYSkfS1/video-%E6%B2%96%E7%B9%A9a5%E5%92%8C%E7%89%9B%E5%A3%BD%E5%96%9C%E7%87%92%E6%A5%B5%E5%87%BA%E7%A4%BA%E5%BD%B1%E7%89%87%E5%8F%AF%E6%8A%B5500%E6%97%A5%E5%B9%A3",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FSukiyaki.webp?alt=media&token=9ebccd0d-d36c-4b93-a938-f672e17d52b8", 
+                category: "🥩 燒肉", 
+                price: "￥4,600 - ￥9,200",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/u4nGeFjSm2XZbjVZ7" } ],
+                desc: "國際通周邊新開的壽喜燒店，這裡的肉品誠意十足，和牛切得非常大塊，下鍋後吸滿湯汁，入口即化的口感令人驚艷，肉大塊厚實，完全不怕客人吃，且白飯無限供應，搭配鹹甜適中的湯頭，真的可以連吃好幾碗。" 
+            },
+            //=====🍲 火鍋=====
+            { 
+                id: "food-ufuya", 
+                name: "百年古家大家", 
+                link: "https://miatv.tw/ufuya/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FUfuya.webp?alt=media&token=fd77afe9-5c5a-4d8b-a360-5925e3949917", 
+                category: "🍲 火鍋", 
+                price: "￥750 - ￥13,200",
+                mapLinks: [{ branch: "", url: "https://maps.app.goo.gl/s5LCAZao67BBYrwY7"}],
+                desc: "<strong>百年古家大家(百年古家大家うふやー)</strong>位於沖繩北部，是一間專賣沖繩傳統料理<strong>沖繩麵</strong>與<strong>阿古豬</strong>的美食餐廳，店家前面有寬敞的停車空地(若有行動不便者停車需求，在餐廳的後方另有停車場)，所以在沖繩租車自駕很適合安排來到<strong>百年古家大家</strong>用餐，這裡可以安排約2小時的愜意用餐及拍照時光。" 
+            },
+            { 
+                id: "food-raout", 
+                name: "島豬與琉球牛 燦別邸", 
+                link: "https://lailai-web.com/san-bettei/", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FRaout_2.webp?alt=media&token=9e2e6b18-5cad-43fb-901f-1ba476059690", 
+                category: "🍲 火鍋", 
+                price: "￥750 - ￥13,200",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/iXHUA51ucLRtmHPd7" } ],
+                desc: "各界名人也會訂位私下探訪的優質餐廳。最優質的A5級日本產<strong>黑毛和牛</strong>,以及含繼承了75%琉球當地黑毛豬血估的「<strong>島黑</strong>」、吃沖繩特產鳳梨長大的「<strong>高級鳳梨Agu豬</strong>」在內共3種Agu豬(阿古豬),都是僅於此才能享受到的美味。還有使用罕見水晶鍋的涮涮鍋與搭配秘傳醬汁的絕品壽喜燒,都能讓您一飽口福。" 
+            },
+            //=====🍚 飯/麵/主食=====
+            { 
+                id: "food-shirasa", 
+                name: "しらさ食堂", 
+                link: "https://dorapig.com/shirasashokudou2025/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FShirasa.webp?alt=media&token=d796b21e-8a71-465a-98e2-9a9962b29838", 
+                category: "🍚 飯/麵/主食", 
+                price: "￥1,000 - ￥5,000",
+                mapLinks: [{ branch: "", url: "https://maps.app.goo.gl/ARSMtRbP29tj2EdeA" },],
+                desc: "<strong>古宇利島</strong>美食除了蝦蝦飯以外就是海膽蓋飯了。<strong>しらさ食堂</strong>位於海邊，有戶外也有室內座位，只要3500円就可以吃到滿滿海膽的<strong>海膽飯</strong>。<br>除了海膽飯以外，還有壽司、塔可飯跟海鮮丼、炒飯等，除了生食以外還有熟飯。" 
+            },
+            { 
+                id: "food-gurume", 
+                name: "グルメ迴轉壽司市場", 
+                link: "https://bobbyfun.tw/2023-04-28-2325/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FGurume.webp?alt=media&token=aaa0320e-f86e-4d61-a395-20259c38495e", 
+                category: "🍚 飯/麵/主食", 
+                price: "￥160 - ￥450",
+                mapLinks: [                        
+                    { branch: "美浜店", url: "https://maps.app.goo.gl/5MM6V6Y3eLh1mrV69" },
+                    { branch: "泡瀨店", url: "https://maps.app.goo.gl/a6umQcwr946dbGhg7" }
+                ],
+                desc: "<strong>沖繩美國村迴轉壽司 (グルメ迴轉壽司市場) </strong>絕對是人氣No.1的<strong>美國村</strong>美食，用餐時間排一個小時家常便飯，一盤壽司最便宜只要35元，就能吃到產地直送的新鮮漁獲，且位於<strong>美國村</strong>入口處，招牌超顯眼很難錯過，店前方就有大片停車場非常方便。" 
+            },
+            { 
+                id: "food-mihama", 
+                name: "みはま食堂", 
+                link: "https://marukoblog.tw/mihama-diner.html",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FMihama.webp?alt=media&token=edb147d0-7b38-4803-b53f-a4b4c9d027f0", 
+                category: "🍚 飯/麵/主食", 
+                price: "￥100 - ￥1,750",
+                mapLinks: [{ branch: "", url: "https://maps.app.goo.gl/YyiDcPedh746VWmf8" },],
+                desc: "<strong>みはま食堂 (mihama diner) </strong>是一家主打<strong>沖繩麵</strong>、<strong>骨汁</strong>、<strong>牛肉蕎麥麵</strong>的沖繩麵餐廳，價格實惠，很受到當地人喜歡，這裡的沖繩麵餐廳還有一個特色就是會賣<strong>骨汁</strong>，就是用來熬湯用的大骨，份量很驚人，另外可以搭配白飯、豬排，一份套餐折合台幣不到250元，不過這家店只營業到中午就結束了，想來用餐一定要挑對時間。" 
+            },
+            { 
+                id: "food-kijimuna", 
+                name: "塔可飯咖啡Kijimuna", 
+                link: "https://lailai-web.com/tacorice-cafe-kijimuna/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FKijimuna.webp?alt=media&token=9ec22f8e-0a6a-4874-873a-687cbcce76b5", 
+                category: "🍚 飯/麵/主食", 
+                price: "￥110 - ￥1,450",
+                mapLinks: [                        
+                    { branch: "美國村店", url: "https://maps.app.goo.gl/KFvLcnNws3kZHmrf7" },
+                    { branch: "恩納村店", url: "https://maps.app.goo.gl/paYhaWbwtkr4Ct4H7" },
+                    { branch: "イーアス沖縄豊崎店", url: "https://maps.app.goo.gl/obLBHiPoTZpTHdYK7" }
+                ],
+                desc: "<strong>沖繩式墨西哥肉醬飯(Tacorice/塔可飯)</strong>是<strong>沖繩</strong>極具代表性的美食之一,與沖繩麵並列為當地居民的靈魂食物。 此店研發的「<strong>墨西哥肉醬蛋包飯(Omutaco)</strong>」, 更是在其他地方都吃不到的絕頂佳餚,不僅深獲日本國內眾多忠實顧客肯定,一再上門回訪, 也擁有許多來自海外的回頭客。" 
+            },
+            { 
+                id: "food-kishimotto", 
+                name: "岸本食堂", 
+                link: "https://www.facebook.com/groups/baofontraveljp/posts/1520761385280709/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FKishimotto.webp?alt=media&token=06e27bb3-93f6-4875-bce0-cf2e435c160f", 
+                category: "🍚 飯/麵/主食", 
+                price: "￥150 - ￥950",
+                mapLinks: [                        
+                    { branch: "本店", url: "https://maps.app.goo.gl/vKcUkYs5bythUXZz5" },
+                    { branch: "八重岳店", url: "https://maps.app.goo.gl/pgatZAtneKUAdiVX6" }
+                ],
+                desc: "自1905年創業至今是最具特色的沖繩百年老店之一，本店裡的裝潢保留著古早味的歷史風格。餐點價格超級平民，來這的饕客最愛點滷的入味的三層肉跟厚實有咬勁的麵條，這也是<strong>岸本食堂</strong>裡的招牌特色，湯頭炭火烹煮還有淡淡木頭香氣，叫人印象深刻。" 
+            },
+            { 
+                id: "food-kaihoumaru", 
+                name: "海人料理 海邦丸", 
+                link: "https://hanblog.tw/kaihoumaru2/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FKaihomaru.webp?alt=media&token=352869c4-303d-49ad-af9d-6224be695de7", 
+                category: "🍚 飯/麵/主食", 
+                price: "￥120 - ￥2,400",
+                mapLinks: [                        
+                    { branch: "本店", url: "https://maps.app.goo.gl/gpZcVPGyoubttYny5" },
+                    { branch: "2號店", url: "https://maps.app.goo.gl/gNTfEHokostcNg6U9" }
+                ],
+                desc: "<strong>海人料理海邦丸</strong>是<strong>美麗海水族館</strong>一帶很多人推薦的餐廳，這裡的定食和海鮮丼新鮮好吃，價格不貴，是來沖繩美麗海水族館玩時用餐的好地方。" 
+            },
+            { 
+                id: "food-danbo", 
+                name: "暖暮拉麵", 
+                link: "https://bobbyfun.tw/2023-04-30-2335/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FDanbo.webp?alt=media&token=578fc6f7-9e61-4915-8124-52885527c674", 
+                category: "🍚 飯/麵/主食", 
+                price: "￥120 - ￥1,300",
+                mapLinks: [                        
+                    { branch: "那霸牧志店", url: "https://maps.app.goo.gl/UZVYKgVupbMMadCu6" },
+                    { branch: "中城店", url: "https://maps.app.goo.gl/69frWEvxJkqUpUMV9" },
+                    { branch: "系滿店", url: "https://maps.app.goo.gl/aV1AnzK7dvm7ic6q9" },
+                    { branch: "沖繩美原店", url: "https://maps.app.goo.gl/MyKoMADDn9JDwsqK8" },
+                    { branch: "名護店", url: "https://maps.app.goo.gl/HZe19tj7ZBoy2f2R7" },
+                    { branch: "北谷砂邊店", url: "https://maps.app.goo.gl/ACWEVUz5aKRnWuwB6" },
+                    { branch: "那覇開南店", url: "https://maps.app.goo.gl/sFV4jg1CEGEM2tPP6" },
+                    { branch: "首里店", url: "https://maps.app.goo.gl/5T3rNkWuTsPPHQdW9" }
+                ],
+                desc: "<strong>暖暮拉麵</strong>是台灣人最愛的沖繩拉麵店，人氣最高的<strong>國際通</strong>分店，排隊一個小時以上是家常便飯。<br>菜單以<strong>豚骨拉麵</strong>最受歡迎，還曾擊敗「<strong>一蘭</strong>」榮獲九州拉麵比賽冠軍。" 
+            },
+            { 
+                id: "food-tondou", 
+                name: "琉球新麵 通堂", 
+                link: "https://kimiyo.tw/tondou/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FTondou.webp?alt=media&token=40fc5b74-fbfa-4f65-8cd0-722776911a96", 
+                category: "🍚 飯/麵/主食", 
+                price: "￥150 - ￥1,300",
+                mapLinks: [                        
+                    { branch: "小祿本店", url: "https://maps.app.goo.gl/712GfiBreAgWSn4e6" },
+                    { branch: "寄宮十字路店", url: "https://maps.app.goo.gl/drVGLdPrfscR5Lx37" },
+                    { branch: "琉大北口店", url: "https://maps.app.goo.gl/AwMP7ejVJD6D6S4S7" }
+                ],
+                desc: "<strong>琉球新麵 通堂</strong>源自<strong>博多拉麵</strong>，為了有別於傳統的沖繩麵，所以店家才取為<strong>琉球新麵 通堂</strong>，儘管歷史不算悠久，但卻是聲名遠播的沖繩必吃美食。<br><strong>通堂</strong>最讓人熟知的就是以<strong>正宗博多豬骨湯頭</strong>為基底的<strong>男人麵</strong>，以及以<strong>輕鹽雞高湯</strong>為基底的<strong>女人麵</strong>。" 
+            },
+            //=====🍺 居酒屋=====
+            { 
+                id: "food-kazuki", 
+                name: "酒喜膳 一喜喜 (Kazuki)", 
+                link: "https://anise.tw/281181",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FKazuki.webp?alt=media&token=781d4a16-a201-4bc6-a08f-4128201b0e39", 
+                category: "🍺 居酒屋", 
+                price: "￥380 - ￥11,800",
+                mapLinks: [{ branch: "", url: "https://maps.app.goo.gl/ie5hpHMrzL2R3agM6" },],
+                desc: "<strong>酒喜膳一喜喜</strong>為一家提供沖繩<strong>石垣牛</strong>與<strong>神戶牛</strong>、<strong>松阪牛</strong>及<strong>米澤牛</strong>等日本三大和牛的壽喜燒居酒屋，店內的招牌為極具特色的<strong>黑糖棉花糖壽喜燒</strong>。<br>店內的空間為日式傳統的風格，座位區是具有隱密性的包廂設計，讓你可以放鬆又愉悅的在這裡享用美食。" 
+            },
+            { 
+                id: "food-gururi", 
+                name: "野菜巻串屋 ぐるり", 
+                link: "https://www.oki-family.com/%E9%87%8E%E8%8F%9C%E5%B7%BB%E4%B8%B2%E7%87%92/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FGururi.webp?alt=media&token=d642e858-4163-44eb-9756-06aec92db167", 
+                category: "🍺 居酒屋", 
+                price: "￥180 - ￥2,680",
+                mapLinks: [{ branch: "", url: "https://maps.app.goo.gl/RvoXaPgps27BkiLEA" }],
+                desc: "<strong>野菜巻串屋 ぐるり</strong>主打菜色是＂菜肉卷串燒＂，沖繩豬腩肉包捲着蔬菜燒烤，高溫把肉的外層焦香，蔬菜汁溢出補充肉片失去的水份。放入口中，外脆內軟，口感非常豐富。 一定要吃他們的生菜卷，簡單的鹽燒最能帶出風味。" 
+            },
+            //=====🥪 輕食=====
+            { 
+                id: "food-seaheart", 
+                name: "Sea Heart", 
+                link: "https://selenakimo.pixnet.net/blog/posts/13354184637",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FSeaHeart.webp?alt=media&token=5484bf13-cad8-402c-bb85-140393babbf5", 
+                category: "🥪 輕食", 
+                price: "￥300 - ￥1,600",
+                mapLinks: [{ branch: "", url: "https://maps.app.goo.gl/PTvsGyi4GXZxjkeq7" }],
+                desc: "值得一試的小店，車子可以停在琉球村的停車場，因為這裡不好停車。塔可飯酸甜辣好吃，並帶著特殊香氣很有異國風。楓糖法式吐司外酥內嫩甜度剛剛好。" 
+            },
+            //=====🍟 速食=====
+            { 
+                id: "food-aw", 
+                name: "A&W", 
+                link: "https://kafu.tw/aw-makiminato/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FA%26W.webp?alt=media&token=36c877b0-2164-44d8-bb64-23599f133584", 
+                category: "🍟 速食", 
+                price: "￥200 - ￥940",
+                mapLinks: [                        
+                    { branch: "牧港店", url: "https://maps.app.goo.gl/ZSQ8u4TDkjNBvGEb7" },
+                    { branch: "那覇金城店", url: "https://maps.app.goo.gl/VC2a64eG9kfTusRR7" },
+                    { branch: "イーアス沖縄豊崎店", url: "https://maps.app.goo.gl/QbEKtfUkPJ2whnA6A" },
+                    { branch: "那覇空港店", url: "https://maps.app.goo.gl/DWFL8RrBjfW2MrhK9" },
+                    { branch: "浦添パルコシティ店", url: "https://maps.app.goo.gl/LDHaRLGqCHEqnfHP7" },
+                    { branch: "美浜店", url: "https://maps.app.goo.gl/WZKfkiiTpHW6CYNJ8" }
+                ],
+                desc: "<strong>A&amp;W</strong> 原本是美國來的老牌漢堡店，現在在日本只剩「<strong>沖繩限定</strong>」能吃到，也難怪它會變成觀光客和在地人都會默默回訪的速食品牌，有些人甚至說「來沖繩不喝一杯 Root Beer，行程就不完整」。" 
+            },
+            //=====🌮 小吃=====
+            { 
+                id: "food-kourishrimp", 
+                name: "古宇利蝦蝦飯", 
+                link: "https://bobbyfun.tw/2023-04-30-2328/",
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FKouriShrimp.webp?alt=media&token=f4f36a01-375a-4737-b029-535c94c47da9", 
+                category: "🌮 小吃", 
+                price: "￥440 - ￥2,500",
+                mapLinks: [{ branch: "", url: "https://maps.app.goo.gl/nxp1mt6J8paEizQv5" }],
+                desc: "<strong>古宇利島</strong>必吃蝦蝦飯，2、3樓還能遠眺<strong>古宇利大橋</strong>。" 
+            },
+            { 
+                id: "food-potama", 
+                name: "ポーたま 沖繩豬肉蛋飯糰", 
+                link: "https://www.wendyjourney.com/porktamago/", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FPotama.webp?alt=media&token=5c50fd23-9a3c-4934-b258-03422d10604b", 
+                category: "🌮 小吃", 
+                price: "￥390 - ￥1,200",
+                mapLinks: [ 
+                    { branch: "北谷店", url: "https://maps.app.goo.gl/TULcarnHfZivtnma8" },
+                    { branch: "本部町店", url: "https://maps.app.goo.gl/otfVNXoGjP2ty9Gr7" },
+                    { branch: "牧志市場店", url: "https://maps.app.goo.gl/YuWq96a3q2dYDaHm8" },
+                    { branch: "那霸機場國內線到達大廳店", url: "https://maps.app.goo.gl/FyDqiBKZ9uaY32y36" },
+                    { branch: "那霸機場國際線美食區店", url: "https://maps.app.goo.gl/Z525EccUfr5g3jvy9" },
+                 ],
+                desc: '必吃的沖繩美食之一! 口味眾多，主要以豬肉和蛋為主體，再搭配各種配料變化，每間分店的菜單也不太一樣，詳細內容可以參考<a href="https://porktamago.com/menu/" target="_blank">官網</a>。'
+            },
+            { 
+                id: "food-camel", 
+                name: "CAMEL SANDWICH & SMOOTHIE", 
+                link: "https://www.threads.com/@oct.18.day/post/DXS7U1kErGa?xmt=AQF0AYkk5hcVC7Ur7Z5wt-SWF5vgvun_a-3ATb6XrB9MPOhjdy5mLKSFFehzdfZHTELFwDvN&slof=1", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FCamel.webp?alt=media&token=2266dde6-58c4-4a99-93ec-19c8ae886f34", 
+                category: "🌮 小吃", 
+                price: "￥500 - ￥4,500",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/xq9QmMeX2CiudxsH6" } ],
+                desc: "鄰近美麗海水族館，三明治份量超大、給料豐富，黑糖香蕉奶昔大推。" 
+            },
+            { 
+                id: "food-burgertime", 
+                name: "BURGER TIME", 
+                link: "https://alinalife.tw/burger-time/", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FBurgerTime.webp?alt=media&token=16ec9552-3fee-42ab-9f64-901531703020", 
+                category: "🌮 小吃", 
+                price: "￥330 - ￥2,325",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/Hp2zmqTMDjEmZA549" } ],
+                desc: "<strong>BURGER TIME</strong> 是沖繩國際通的美式漢堡店，一早8:30就開門，營業時間到晚上快9點；Q軟漢堡麵包配上手打漢堡排，嫩彈多汁的美味好吃，且手打牛肉漢堡排據說是100%牛肉做成，而且取自四個不同部位，口感跟味道都很豐富，香甜多汁又嫩彈，肉香味濃厚。招牌BLT酪梨起司漢堡大受歡迎，早餐限定漢堡套餐超值划算，菜單口味很多，還能加購自選配料。" 
+            },
+            //=====🍦 點心/冰品=====
+            { 
+                id: "food-ayumi", 
+                name: "步沙翁", 
+                link: "https://marukoblog.tw/ayumi.html#google_vignette", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FAyumi.webp?alt=media&token=90ac8929-222a-45bd-be9d-ce092db85b94", 
+                category: "🍦 點心/冰品", 
+                price: "￥450 - ￥735",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/wBCm5c8ANPiwTwji8" } ],
+                desc: "<strong>歩のサーターアンダギー (步あゆみ)</strong>位於<strong>日本沖繩那霸</strong>國際通第一牧志公設市場內的2樓，主要賣<strong>沖繩</strong>傳統的油炸點心的30年老店，一顆圓滾滾的沖繩菓子外型長得很像台灣的開口笑，只用雞蛋、麵粉、油做成，外皮香脆，充滿蛋香，是在傳統市場內媽媽也會喜歡的點心。" 
+            },
+            { 
+                id: "food-ohacorte", 
+                name: "oHacorte", 
+                link: "https://www.wendyjourney.com/ohacorte/#google_vignette", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FOhacorte.webp?alt=media&token=659d4115-c857-4e8c-9351-ad7070a85950", 
+                category: "🍦 點心/冰品", 
+                price: "￥170 - ￥3,000",
+                mapLinks: [ 
+                    { branch: "小禄店", url: "https://maps.app.goo.gl/2atJyMRA6TYh3L2k7" },
+                    { branch: "那覇空港店", url: "https://maps.app.goo.gl/RUovtAnfKum8fB1QA" },
+                    { branch: "港川本店", url: "https://maps.app.goo.gl/k5EAiWmifrtsKaF9A" },
+                 ],
+                desc: "這家店以精緻的<strong>甜點</strong>和<strong>水果塔</strong>聞名，店內的裝潢走一個溫馨日式雜貨風，非常好拍照，是許多人到<strong>沖繩</strong>必吃的甜點！除了新鮮的甜點、水果塔，店家也有販售常溫保存的點心及一些文創商品。<br><strong>oHacorte</strong> 會根據不同季節推出限定的<strong>水果塔</strong>，<strong>綜合水果塔</strong>是熱銷第一名！色彩繽紛、種類豐富，是店內招牌水果塔，如果去的時候有看到它，請毫不猶豫的點下去吧！" 
+            },
+            { 
+                id: "food-blueseal", 
+                name: "Blue Seal", 
+                link: "https://gofunit.com/%E6%B2%96%E7%B9%A9blue-seal%E5%86%B0%E6%B7%87%E6%B7%8B/", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FBlueSeal.webp?alt=media&token=fb71cccc-420f-461f-9652-feb26f786d0e", 
+                category: "🍦 點心/冰品", 
+                price: "￥550 - ￥1,050",
+                mapLinks: [ 
+                    { branch: "那霸機場國際線航廈店", url: "https://maps.app.goo.gl/RUaq3fURMVkK8JyJ7" },
+                    { branch: "Palette久茂地店", url: "https://maps.app.goo.gl/e5pka4MPDQC8q9kE9" },
+                    { branch: "國際通店", url: "https://maps.app.goo.gl/HRXSVdiu2KFbjpzQ8" },
+                    { branch: "大湾店", url: "https://maps.app.goo.gl/KF4ss38ApTBAWVKx7" },
+                    { branch: "国際通りトレビアン店", url: "https://maps.app.goo.gl/HEPCnXWLtMQuA1g98" },
+                    { branch: "Urasoe PARCO CITY", url: "https://maps.app.goo.gl/9ZqfTdoC5DU3JEru6" },
+                    { branch: "牧港本店", url: "https://maps.app.goo.gl/hzxRnvbos8QxNR2C9" },
+                    { branch: "Depot Island", url: "https://maps.app.goo.gl/fgHBbkrpjXYg7aKs8" },
+                    { branch: "沖縄ライカム", url: "https://maps.app.goo.gl/nAsiZF6vvFhD6b2o6" },
+                    { branch: "名護店", url: "https://maps.app.goo.gl/8kYAWEW3WByWEC9R9" },
+                 ],
+                desc: "<strong>Blue Seal</strong>冰淇淋最初由美國軍方在沖繩設立的美軍基地內所創立，專門供應駐紮軍人的美式冰淇淋，隨著時代發展，於1963年正式向一般民眾開放，成為沖繩地區最具代表性的冰淇淋品牌。<br>其以濃郁的美式風格和在地食材融合為最大特色，推出超過30種口味，包括<strong>紅芋</strong>、<strong>鹽味香草</strong>、<strong>鳳梨</strong>、<strong>沖繩黑糖</strong>、<strong>甘蔗</strong>、<strong>泡盛葡萄乾</strong>等，許多都是僅在沖繩才能品嚐到的限定風味，除了經典甜筒、杯裝冰淇淋，也有雪酪、冰淇淋夾心餅乾等創意產品。" 
+            },
+            { 
+                id: "food-maedabreeze", 
+                name: "Maeda Breeze", 
+                link: "https://maeda-breeze.okinawa/", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FMaedaBreeze.webp?alt=media&token=8605e56a-7994-4212-8fb4-6cdb3d99c29b", 
+                category: "🍦 點心/冰品", 
+                price: "￥250 - ￥1,200",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/8oyme2pnmixzzEBJ6" } ],
+                desc: "靠近<strong>真榮田漁港</strong>，內用有2張小圓桌，有簡單的餐點及飲料。" 
+            },
+            { 
+                id: "food-sugarbrothers", 
+                name: "SUGAR BROTHERS", 
+                link: "https://okibra.com/zh_tw/%e5%bc%95%e5%85%a5/%e7%b3%96%e5%85%84%e5%bc%9f/", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FSugarBrothers.webp?alt=media&token=627f61ac-ede8-40b8-80b1-ae06992f6e1b", 
+                category: "🍦 點心/冰品", 
+                price: "￥420 - ￥650",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/TCsZJ4B4z9MEfJeF8" } ],
+                desc: "<strong>SUGAR BROTHERS</strong> 是一家<strong>布丁咖啡館</strong>，幾乎洋溢著異國風情，您可以在驅車遊覽沖繩縣恩納村的途中，順道來此一遊。店主在全國各地吃過 1,200 種以上的布丁，以口感豐富、入口即化的手工布丁為傲。店內裝潢經典，白色牆面藝術令人印象深刻，您可以在輕鬆的氣氛中享受甜蜜時刻。" 
+            },
+            { 
+                id: "food-patisserie", 
+                name: "Patisserie Sweet Shell", 
+                link: "https://sweetshell.amebaownd.com/", 
+                imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FFoods%2FPatisserie.webp?alt=media&token=35410549-3606-4a11-9402-4732475b5e17", 
+                category: "🍦 點心/冰品", 
+                price: "￥400 - ￥700",
+                mapLinks: [ { branch: "", url: "https://maps.app.goo.gl/cKKdfdRc6iMEmsuP8" } ],
+                desc: "有好吃的<strong>生巧克力蛋糕</strong>、<strong>舒芙蕾</strong>和<strong>水果蛋糕</strong>等甜點。" 
+            }
+        ];
+
+        const itineraryData = [
+            {
+                date: "7 月 10 日 (五)",
+                spots: [
+                    {
+                        name: "國際通",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FKoukuSai.webp?alt=media&token=b83d79f8-18b3-4bc6-8044-f3c1f7ca9afb",
+                        link: "https://www.gltjp.com/zh-hant/article/item/21027/",
+                        mapUrl: "https://maps.app.goo.gl/8JS1WQeArXbeMi4Z7",
+                        mapCode: "33 158 608*21",
+                        description: "<strong>國際通商店街</strong>是沖繩縣的核心區域「<strong>那霸市</strong>」的主要街道。<br>在約1.6km長的街道上，餐飲店、伴手禮店、雜貨店等約600家店鋪櫛比鱗次，可以享受美食和購物樂趣。",
+                        customButtons: [
+                            { name: "🚗國際通周邊停車場", link: "https://tw.gogo-tour.com/info/kokusai-street-parking-hacks/" },
+                        ],
+                        attractions: [ 
+                            { title: "第一牧志公設市場", desc: "傳統市場" },
+                            { title: "Calbee+", desc: "人氣零食店" },
+                            { title: "鹽屋", desc: "鹽產品專賣店" }
+                         ],
+                        nearFoods: [
+                            { id: "food-ayumi", desc: "傳統點心" },
+                            { id: "food-potama", branch: "牧志市場店", desc: "有名小吃" },
+                            { id: "food-burgertime", desc: "美式漢堡店" },
+                            { id: "food-danbo", branch: "那霸牧志店", desc: "拉麵店" },
+                            { id: "food-shishiya", desc: "燒肉店，可外帶炙燒和牛握壽司" },
+                            { id: "food-liuchiucow", branch: "那霸國際通", desc: "燒肉店" },
+                            { id: "food-sukiyaki", desc: "燒肉店" }
+                        ]
+                    },
+                    {
+                        name: "波上宮",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FNaminouegu.webp?alt=media&token=f4dae5d1-df9d-483c-847d-71836aafb3d4",
+                        link: "https://okinawa.letsgojp.com/archives/757433/",
+                        mapUrl: "https://maps.app.goo.gl/7TWApwbzRQStCQtH6",
+                        mapCode: ["33 185 022*71","33 186 220*06 (神社停車場)"],
+                        description: "位於沖繩縣那霸市，是沖繩最具代表性的神社之一，歷史可追溯至琉球王國時代，為琉球八社之一。神社建於海邊懸崖之上，面朝碧藍的大海，被視為守護海上安全、祈求國泰民安的靈地。<br>由於其特殊的地理位置，參拜者不僅能感受神聖莊嚴的氛圍，還能同時欣賞壯闊的海景與夕陽，是旅人造訪那霸時不可錯過的重要景點。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "Birthday港川店",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FBirthday.webp?alt=media&token=5c0b459a-6e11-448d-b0f0-aff5e7f2c9c6",
+                        link: "https://s045488.pixnet.net/blog/posts/9577131020",
+                        mapUrl: "https://maps.app.goo.gl/kBeCjuEbAojfReqBA",
+                        mapCode: "33 340 358*60",
+                        description: "<strong>Birthday</strong>是日本連鎖的嬰幼兒用品店，主要以童裝服飾為主，販售許多可愛的小孩衣服和鞋品等。，沖繩就有四間分店：<strong>名護店</strong>、<strong>港川店</strong>、<strong>具志川店</strong>、<strong>八重山店</strong>。<br>周邊也有其他服飾店、超市及3C賣場可以逛<strong>(詳見地圖資訊)</strong>",
+                        attractions: [{ title: "港川外人住宅街", desc: "多個特色小店" }],
+                        nearFoods: [{ id: "food-ohacorte", branch: "港川本店", desc: "甜點店" }]
+                    },
+                    {
+                        name: "PARCO CITY",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FParcoCity.webp?alt=media&token=3182aff6-793c-415f-9a2a-dbc8b276de3f",
+                        link: "https://okinawa.letsgojp.com/archives/543066/",
+                        mapUrl: "https://maps.app.goo.gl/nZXBfW5dqJ6dFjhY7",
+                        mapCode: "33 309 810*30",
+                        description: "「<strong>SAN-A 浦添西海岸 PARCO CITY</strong>」距離<strong>那霸港</strong>最短只需要約10分鐘，<strong>那霸機場</strong>最快20分鐘可到，從國際通出發也只要25分鐘，交通超級方便！中心內開設了 UNIQLO、EDION 愛電王、ZARA、POTR、THE NORTH FACE/HELLY HANSEN 等約250家品牌商店。加上不少的餐廳、咖啡館都能一邊看無敵海景一邊用餐的優勢，成為來沖繩自由行購物、吃美食的必訪景點。",
+                        attractions: [],
+                        nearFoods: [
+                            { id: "food-aw", branch: "浦添パルコシティ店", desc: "漢堡店" },
+                            { id: "food-blueseal", branch: "Urasoe PARCO CITY", desc: "冰淇淋店" }
+                        ]
+                    }
+                ]
+            },
+            {
+                date: "7 月 11 日 (六)",
+                spots: [
+                    {
+                        name: "琉球村",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FLiuchiuVillage.webp?alt=media&token=abdfc8da-9b18-4da9-b8d9-f646445a12e8",
+                        link: "https://bobbytravel.tw/ryukyu-mura/",
+                        mapUrl: "https://maps.app.goo.gl/6gRcHnVqV3uWvyy46",
+                        mapCode: ["206 033 037*14","206 033 096*41 (停車場)"],
+                        description: "沖繩琉球村，琉球文化主題公園讓人彷彿穿越過去，以「<strong>Michijune遊行表演</strong>」、「<strong>Eisa太鼓舞</strong>」最精彩必看。<br>漫步眾多超過100年歷史，且被登錄為<strong>有形文化財</strong>的古宅，一邊品嘗傳統點心<strong>沙翁</strong>、<strong>甘蔗汁</strong>、<strong>琉健茶</strong>。",
+                        attractions: [],
+                        nearFoods: [
+                            { id: "food-sugarbrothers", desc: "布丁咖啡館" },
+                            { id: "food-seaheart", desc: "甜點店" },
+                            { id: "food-patisserie", desc: "甜點店" },
+                        ]
+                    },
+                    {
+                        name: "青之洞窟",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FBlueCave.webp?alt=media&token=85973843-f5fb-4610-a577-084b48c880ce",
+                        link: "https://bobbytravel.tw/blue-cave-okinawa/",
+                        mapUrl: "https://maps.app.goo.gl/bQMZW2yu1XydB9e99",
+                        mapCode: "206 062 127*64 (潛水店家)",
+                        description: "「<strong>青之洞窟</strong>」（藍洞）位於沖繩本島恩納村的<strong>真榮田岬</strong>。陽光透過清澈的海水折射，將洞穴內部映照出夢幻的蔚藍光芒，是沖繩最受歡迎的浮潛與潛水勝地。此處適合全年造訪，即使不會游泳也能體驗。",
+                        customButtons: [
+                            { name: "潛水店家 : Pink Mermaid", link: "https://pink-mermaid.com/tw/blog/okinawa-blue-cave-family-tour/" },
+                        ],
+                        attractions: [ 
+                            { title: "ハユウ浜", desc: "海灘" },
+                            { title: "真榮田岬", desc: "海岬" },
+                         ],
+                        nearFoods: [
+                            { id: "food-maedabreeze", desc: "咖啡廳" },
+                            { id: "food-sugarbrothers", desc: "布丁咖啡館" },
+                            { id: "food-seaheart", desc: "甜點店" },
+                            { id: "food-patisserie", desc: "甜點店" },
+                        ]
+                    }
+                ]
+            },
+            {
+                date: "7 月 12 日 (日)",
+                spots: [
+                    {
+                        name: "美麗海水族館",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FBeautifulSea.webp?alt=media&token=a92a21ac-fd9f-4626-a514-cdbb61b8e764",
+                        link: "https://mimigo.tw/churaumi-okinawa/",
+                        mapUrl: "https://maps.app.goo.gl/6haCM8NkgCdPveNp8",
+                        mapCode: ["553 075 767*74","553 075 590*15 (P7停車場)"],
+                        description: "<strong>美麗海水族館</strong>位於沖繩縣北部・本部町的「<strong>海洋博公園</strong>」內，從那霸機場開車約2小時可達。如實重現沖繩海洋的豐富多元展示是館內的魅力所在。館內可以實際體驗從珊瑚礁到深海，多種生物棲息的世界。在世界最大級的水槽「<strong>黑潮之海</strong>」中，能看到<strong>鯨鯊</strong>和珊瑚礁<strong>鬼蝠魟</strong>悠游的姿態。",
+                        customButtons: [
+                            { name: "⚠️園區內有多個停車場，P7離水族館最近", link: "" },
+                        ],
+                        attractions: [],
+                        nearFoods: [
+                            { id: "food-kaihoumaru", desc: "海鮮餐廳" },
+                            { id: "food-camel", desc: "好吃三明治" },
+                            { id: "food-kishimotto", desc: "沖繩麵" },
+                        ]
+                    },
+                    {
+                        name: "古宇利島 / 古宇利橋",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FKouriBridge.webp?alt=media&token=0aa75c22-f6c0-4ac3-8769-51bebeb045d9",
+                        link: "https://okinawa.letsgojp.com/archives/392405/",
+                        mapUrl: "https://maps.app.goo.gl/ho4djCoBzqAk3AGv7",
+                        mapCode: "485 693 485*14",
+                        description: '<strong>古宇利島</strong>是沖繩本島北部相當具代表性的離島景點，以<strong>古宇利大橋</strong>、清澈透明的海景、天然沙灘、「<strong>心形岩</strong>」以及<strong><a href="https://bobbytravel.tw/kouri-ocean-tower/" target="_blank">古宇利海洋塔</a></strong>聞名，很適合規劃成一趟輕鬆的北部自駕一日遊。<br>連結沖繩本島北部名護市的「<strong>屋我地島</strong>」與其北側的「<strong>古宇利島</strong>」的「<strong>古宇利大橋</strong>」。最大的魅力，是能欣賞到大橋一路延伸向翡翠綠大海的壯麗景色。從沖繩本島前往方便，也因可一邊兜風一邊欣賞絕景的路線而廣受歡迎。',
+                        attractions: [],
+                        nearFoods: [
+                            { id: "food-kaihoumaru", desc: "海鮮餐廳" },
+                            { id: "food-camel", desc: "好吃三明治" },
+                            { id: "food-kishimotto", desc: "沖繩麵" },
+                        ]
+                    }
+                ]
+            },
+            {
+                date: "7 月 13 日 (一)",
+                spots: [
+                    {
+                        name: "永旺夢樂城沖繩來客夢",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FAeonRycom.webp?alt=media&token=50727b68-e92b-4e96-97ad-7b97a66876de",
+                        link: "https://okinawa.letsgojp.com/archives/640089/",
+                        mapUrl: "https://maps.app.goo.gl/gXPABSitvZaYz3re7",
+                        mapCode: "33 530 174*76",
+                        description: "「<strong>永旺夢樂城沖繩來客夢（AEON MALL Okinawa Rycom）</strong>」聚集超過200間店鋪，集結流行服飾、家電、藥妝、雜貨、美食與娛樂設施。鄰近<strong>美國村</strong>與<strong>沖繩兒童王國</strong>，從那霸機場或那霸巴士總站皆有直達巴士，交通便利。無論晴天雨天都能盡情血拼，是旅程中值得安排的購物天堂！",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "ASHIBINAA Outlet",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FAshibinaa.webp?alt=media&token=be62ee61-aba4-46b8-8e37-9cbf84f0f367",
+                        link: "https://okinawa.letsgojp.com/archives/10240/",
+                        mapUrl: "https://maps.app.goo.gl/oHC7MN6JodnJgMrg7",
+                        mapCode: "232 544 544*57",
+                        description: "位在那霸市南邊的「<strong>沖繩 OUTLET ASHIBINAA 購物中心</strong>」從那霸機場開車大約15～20分鐘，是距離機場最近、也是沖繩唯一的大型 OUTLET。多數人玩沖繩會選擇自駕，館內附設免費的大型停車場，停車問題也不用擔心。無論作為旅程首站或返國前的最後採購，這裡都是好安排又好逛的購物點。",
+                        attractions: [],
+                        nearFoods: []
+                    }
+                ]
+            },
+            {
+                date: "其他景點",
+                spots: [
+                    {
+                        name: "LAWSON",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FLawson.webp?alt=media&token=0ee543a4-f18c-4d37-bea3-e415894d1a89",
+                        link: "https://okinawa.letsgojp.com/archives/866614/",
+                        mapUrl: "",
+                        mapCode: "",
+                        description: "<strong>LAWSON</strong> 是日本便利商店的三大超商之一，每個地區會有不同的地區限定品，<strong>沖繩LAWSON</strong>有超過數十款當地限定商品，是絕不能錯過的尋寶聖地！從<strong>紅芋生乳捲</strong>、<strong>黑糖蛋糕卷</strong>，到<strong>豬肉蛋飯糰</strong>、<strong>沖繩soba</strong>與<strong>茉莉花茶</strong>，貨架上濃縮了滿滿在地美食。",
+                        customButtons: [
+                            { name: "很多分店，民宿附近就有", link: "" },
+                        ],
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "永旺 那霸店",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FAeonNaha.webp?alt=media&token=ad54300e-e1f8-437c-83a1-fd430db17f92",
+                        link: "https://boo2k.com/okinawa-aeon-oroku/",
+                        mapUrl: "https://maps.app.goo.gl/mN8ifk71GGJ2VjtDA",
+                        mapCode: "",
+                        description: "<strong>AEON 那霸店</strong>不只是交通方便，更像是一座很好逛的小型百貨。館內除了大型超市，還有服飾、家電、沖繩限定商品、伴手禮、日用品、藥妝、鞋包、小飾品、餐廳與小吃，就算遇到下雨天，也完全不用擔心沒地方去。對第一次來沖繩的人來說，這裡也是一個可以一次買齊、一次逛足的實用購物點。",
+                        customButtons: [
+                            { name: "在7/9住的飯店附近", link: "" },
+                        ],
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "Mega唐吉訶德",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FMegaDonki.webp?alt=media&token=d22da2b1-4b73-4d70-a6a0-91632bb0a877",
+                        link: "https://ksk.tw/donki-okinawa/",
+                        mapUrl: "",
+                        mapCode: "",
+                        description: "<strong>沖繩</strong>的<strong>唐吉訶德</strong>不只一間，每家店的規模、人氣和動線都略有不同。有些分店逛起來較擁擠，有些則因為位置方便、商品齊全而受到旅客喜愛。從那霸市區到離島，每間店都有獨特魅力，想快速補齊零食與伴手禮，或慢慢挑選沖繩限定好物，都能滿足你的需求。",
+                        customButtons: [
+                            { name: "📍 名護店", link: "https://maps.app.goo.gl/5AatVpNWMqHVifau9" },
+                            { name: "📍 宜野灣店", link: "https://maps.app.goo.gl/oUCUpaQDe83GkXKF7" },
+                            { name: "📍 豊見城店", link: "https://maps.app.goo.gl/b9HZZNNwxTB5Q6ji7" }
+                        ],
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "第一牧志公設市場",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FMakishiMarket.webp?alt=media&token=c5d93396-b829-43f8-b55d-16d5e9180fd6",
+                        link: "https://bobbytravel.tw/makishi-public-market/",
+                        mapUrl: "https://maps.app.goo.gl/ZAX38UYFdwNb7aPy6",
+                        mapCode: "",
+                        description: "<strong>沖繩第一牧志公設市場 (牧志市場)</strong>，又有沖繩人的廚房之稱，各式<strong>生猛海鮮</strong>、<strong>河豚</strong>、<strong>石垣牛</strong>在這裡通通有，辣油、海帶芽在這也超便宜，非常有趣的日本市場體驗。歷經近4年整修，<strong>牧志市場</strong>總算原地復活，變得更加乾淨明亮好逛了，就算以前來過的朋友也很推薦再來走走。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "Calbee+",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FCalbee%2B.webp?alt=media&token=38343c90-df6d-4a1a-b73a-76d25532a859",
+                        link: "https://okinawa.letsgojp.com/archives/550083/",
+                        mapUrl: "https://maps.app.goo.gl/NJJD9PYHYccYhyup8",
+                        mapCode: "",
+                        description: "<strong>Calbee 卡樂比洋芋片</strong>旗下每款洋芋片都是來日本旅遊時必買的伴手禮。<strong>Calbee+ 沖繩國際通店</strong>除了販售<strong>Calbee 卡樂比</strong>的人氣系列商品之外，還有<strong>國際通</strong>店鋪限定商品以及沖繩限定口味，加上各式雜貨小物以及文具等，商品超齊全，不管是要買來自己品嚐，還是選購沖繩的伴手禮，在「<strong>Calbee+ 沖繩國際通店</strong>」都能一次搞定！",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "鹽屋",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FSaltHouse.webp?alt=media&token=c080028d-b683-4e40-8544-e8824ce048c8",
+                        link: "https://bobbytravel.tw/shioya/",
+                        mapUrl: "",
+                        mapCode: "",
+                        description: "<strong>沖繩鹽屋 (塩屋)</strong> 是日本最大<strong>鹽專賣店</strong>，最熱鬧的<strong>國際通</strong>、<strong>那霸機場</strong>都有鹽屋分店。而鹽屋破百種鹽＆伴手禮中，最受歡迎的就是榮登金氏世界紀錄礦物質含量世界第一的「<strong>宮古島雪鹽</strong>」了。店內還能一次品嘗到來自世界各地的鹽，正是鹽屋最有趣的地方。光是沖繩各地的鹽就有十來種，像適合當牛排鹽的「<strong>居我地島之鹽</strong>」、適合作串燒的「<strong>湧出之鹽</strong>」等，皆有詳細圖文解說不必擔心不了解用途。",
+                        customButtons: [
+                            { name: "📍 那霸機場店", link: "https://maps.app.goo.gl/nVTE36u6x53DTuUF6" },
+                            { name: "📍 國際通店", link: "https://maps.app.goo.gl/2MobuLD5eKJ1YfqT6" }
+                        ],
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "道の駅「許田」",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FKyoda.webp?alt=media&token=77a090a5-c207-4e8a-9af7-150a2098872f",
+                        link: "https://roundtripjp.com/2023/03/23/okinawa-31/",
+                        mapUrl: "https://maps.app.goo.gl/f844YmQQF2E4Ehsv8",
+                        mapCode: "",
+                        description: "<strong>沖繩</strong>最大的休息站 : <strong>道の駅「許田」</strong>，農漁產品、伴手禮、餐飲小吃、景點門票應有盡有，十分值得停靠一訪。因為休息站鄰近海邊，因此在地圖標示上也將休息站分為<strong>山側</strong>、<strong>海側</strong>，其實若是喜歡海景的話，將車子停放在海側停車場，是最棒的也是最靠近大海的，更能與租來的自駕車輛合影做個旅途紀念。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "iias沖繩豐崎",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FIias.webp?alt=media&token=0a8a680a-aa7f-4e1e-a5ac-73b6471da0f5",
+                        link: "https://okinawa.letsgojp.com/archives/544483/",
+                        mapUrl: "https://maps.app.goo.gl/2kin57StQwdRVGco8",
+                        mapCode: "",
+                        description: "「<strong>iias 沖繩豐崎</strong>」於2020年6月開幕，是離<strong>那霸機場</strong>最近的購物中心，擁有超過100家店鋪，而且從那霸機場開車只需要20分鐘，非常適合作為沖繩購物的第一站或者回國前的最後血拼！下高架橋之後左轉可以到「<strong>沖繩 OUTLET MALL ASHIBINAA</strong>」，右轉則到「<strong>iias 沖繩豐崎</strong>」，加上兩間購物中心間週末假日還有免費接駁巴士往返，從那霸機場也有直達的公車，無論有沒有開車也很方便！",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "DMM Kariyushi水族館",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FDMM.webp?alt=media&token=b8b3b175-e4f5-4876-8dbf-51b25c809ce8",
+                        link: "https://bobbytravel.tw/dmm-kariyushi-aquarium/",
+                        mapUrl: "https://maps.app.goo.gl/EWeNNnUuUbZJWS9e9",
+                        mapCode: "",
+                        description: "<strong>沖繩DMM Kariyushi水族館</strong>，沖繩新景點＆水族館新選擇，位於<strong>iias沖繩豐崎</strong>內，迷你卻精采無比好推薦！<strong>DMM Kariyushi水族館</strong>門票不便宜，但能超近餵食企鵝、樹懶、陸龜；觸摸鯊魚、海星，和看絢爛水母特色滿滿。和<strong>美麗海水族館</strong>相比，這裡聲光效果更強，交通自駕或大眾運輸都方便，值得一訪的室內景點。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "港川外人住宅街",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FOkisho.webp?alt=media&token=80dc0fb4-a0a9-4f07-a1a3-06914549054d",
+                        link: "https://www.jsimplelife.com/okinawa-trip-3/",
+                        mapUrl: "https://maps.app.goo.gl/m2TFEiEg3d75BttE9",
+                        mapCode: "",
+                        description: "<strong>港川外人住宅街</strong>為沖繩<strong>二戰期間</strong>美軍及眷屬所居住的房舍，猶如台北陽明山美軍宿舍群。低矮平房方正、潔白外牆與前庭院，像極將美國郊區生活型態搬進了沖繩。濃厚的美式風格從1972年沖繩回歸日本，開放一般民眾居住、店家進駐，至今其氛圍依然存在著。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "今歸仁城跡",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FNakijinjoseki.webp?alt=media&token=d59619cf-e676-4033-bc9c-ada505d5a131",
+                        link: "https://lailai-web.com/nakijinjo/",
+                        mapUrl: "https://maps.app.goo.gl/3hjbgcLXbxeXFETi8",
+                        mapCode: "",
+                        description: "「<strong>今歸仁城</strong>」是位於沖繩本島北部<strong>今歸仁村</strong>的古蹟。線條優美蜿蜒如蛇的城壁團團圍住7座城郭,規模堪比全沖繩規模最大的<strong>首里城</strong>,因此又被譽為「<strong>北部巨城</strong>」。雖說全盛時期完成的建築等遺跡已所剩無幾,但現仍保有眾多今歸仁城獨樹一幟的鮮明特色和迷人魅力。更何況其坐落在<strong>與志慶真川</strong>溪谷相鄰、標高約100公尺的丘陵上,擁有豐富無比的自然資源,視野遼闊,望出去景緻也十分優美。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "座喜味城跡",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FZakimijiyouato.webp?alt=media&token=a145624f-38a2-41e1-b2a9-eabc9e05bcd9",
+                        link: "https://lailai-web.com/zakimijo/",
+                        mapUrl: "https://maps.app.goo.gl/x6CJbtdCetHLbsVY8",
+                        mapCode: "",
+                        description: "「<strong>座喜味城</strong>」是沖繩9座<strong>世界遺產</strong>之一，據說這是廣為人知的築城專家<strong>護佐丸(Gosamaru)</strong>的最高傑作，儘管結構上只有2個城郭，卻非常精巧，像是呈星型曲線的獨特城牆、欺敵裝置等等，四處可見其巧思。尤其是沖繩最古老的<strong>石造拱門</strong>更是將他的真本領發揮得淋漓盡致。另外,這裡也是世界遺產的城堡中唯一可以攀登城牆的地方,從上方望去的東海景色更是無比壯觀。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "古宇利海灘",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FKouriBeach.webp?alt=media&token=9de2742e-4e3f-4fd3-a68b-393172a92dd9",
+                        link: "https://boo2k.com/kouri-beach/",
+                        mapUrl: "https://maps.app.goo.gl/aWp35Bmzjx8WZNdK6",
+                        mapCode: "",
+                        description: "<strong>古宇利海灘</strong>最迷人的地方，在於那片清澈到發亮的海水，以及一旁連接<strong>古宇利大橋</strong>的遼闊視野。站在沙灘上往海面望去，藍色層次分明，怎麼看都不膩。沙灘一路平緩地延伸進海中，浪況相對溫和，很適合帶小朋友來踏浪、戲水。天氣好的時候，帶張墊子，直接躺在<strong>古宇利海灘</strong>上，吹著海風、聽海浪聲，時間就這樣慢慢流過，身體跟心情都跟著放鬆下來。白色又乾淨的沙灘，總是讓人不自覺脫下鞋子，用腳去感受沙子的溫度與觸感；隨手一拍，就是海天一色的自然背景，怎麼拍都好看，這正是古宇利沙灘最吸引人的地方。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "古宇利島之驛空橋",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FKouriEki.webp?alt=media&token=5869c866-121e-4788-9e44-bff83023c456",
+                        link: "https://www.gltjp.com/zh-hant/directory/item/18366/",
+                        mapUrl: "https://maps.app.goo.gl/WwTLCBHdov4srVhJ7",
+                        mapCode: "",
+                        description: "「<strong>古宇利島之驛 空橋</strong>」坐落在以絕美景觀聞名的「<strong>古宇利大橋</strong>」旁。這裡不僅是觀景場所，還擁有可立即通往海灘的絕佳的地理位置。設施內聚集多家可品嚐在地特色料理的餐飲店。 其中以<strong>阿古豬</strong>料理聞名的「<strong>沖繩食堂 空橋</strong>」提供<strong>沖繩麵</strong>、<strong>塔可飯</strong>、<strong>滷豬肉</strong>等經典沖繩料理。使用<strong>今歸仁番茄</strong>製作、僅此處才嚐得到的招牌「<strong>今歸仁番茄沖繩麵</strong>」尤受歡迎。此外，還有主打用在地芒果、鳳梨、島香蕉等新鮮水果製作飲品的「<strong>SORAHASHI FRUIT</strong>」。由於正前方即是<strong>古宇利海灘</strong>與港口，可以一邊欣賞海景，一邊享用沖繩美食。<br>若想購買伴手禮，則可前往「<strong>Sorahashi MARKET</strong>」。這裡擺滿<strong>古宇利島</strong>和<strong>今歸仁村</strong>等地的特產。除了新鮮沖繩水果、調味料、零食外，還有原創的毛巾和 T 恤等，多款這裡才買得到的限定商品。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "真榮田岬",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FMaedaMisaki.webp?alt=media&token=e0c5475d-289e-48f1-9a28-36160a34a6e9",
+                        link: "https://journey.tw/cape-maeda/",
+                        mapUrl: "https://maps.app.goo.gl/TjyTH4ersW6fDmFG7",
+                        mapCode: "",
+                        description: "<strong>真榮田岬</strong>屬於「<strong>沖繩海岸國定公園</strong>」的一部分，園區內有被海蝕的<strong>石灰岩峭壁</strong>、<strong>珊瑚礁</strong>等沖繩特有的自然風光，以及各種動植物的棲息地。<br>其以清澈見底的海水和豐富的海底生態聞名，不僅僅是一個潛水地點，它的陸上景觀同樣迷人。從岬上的觀景台，遊客可以欣賞到海景的遼闊景致，以及周圍的山崖和綠色植被。最佳的遊覽時段是在早上或下午晚些時候，這樣可以避開人潮並享受更加寧靜的海底世界。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "殘波岬",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FZanpaMisaki.webp?alt=media&token=2190f997-9639-4ed1-b8c9-83ee2dd08e02",
+                        link: "https://tc.tabirai.net/sightseeing/article/okinawa-zanpamisaki/",
+                        mapUrl: "https://maps.app.goo.gl/uu8LLj4tbEMxB5nGA",
+                        mapCode: "",
+                        description: "<strong>殘波岬</strong>位於沖繩本島中部的<strong>讀谷村</strong>，離<strong>那霸機場</strong>開車約1小時10分鐘。高30公尺綿延2公里的斷崖絕壁，是超有名的觀光景點。未經人工整修的天然海岸線，也是在地釣客的釣魚天堂。天氣好的日子，還可以從<strong>殘波岬</strong>眺望到<strong>慶良間群島</strong>。白色的燈塔是<strong>殘波岬</strong>象徵性的地標，約有31公尺高，相當於10層樓公寓的高度，有開放入內參觀，對體力有自信的話，可以挑戰爬到燈塔最頂端喔！",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "殘波海灘",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FZanpaBeach.webp?alt=media&token=5a61f796-25df-4dac-9739-0a9cfc325523",
+                        link: "https://tc.tabirai.net/sightseeing/article/okinawa-zanpa-beach/",
+                        mapUrl: "https://maps.app.goo.gl/jQBBNivj85DKnm3P7",
+                        mapCode: "",
+                        description: "位於<strong>沖繩縣</strong>中部，<strong>讀谷村</strong>的名勝地「<strong>殘波岬</strong>」西側方向蔓延，是本島中部的美麗代表海灘。渡假飯店、白色沙灘、藍海呈現出沖繩該有的景色。海灘傘並列著、水上摩托車奔馳的樣子都讓人感覺出完完全全的度假地。海灘旁有運動用的玩具和多目的廣場，可以與<strong>山羊</strong>和<strong>烏龜</strong>接觸的區域、餐廳、BBQ場所等可以讓家人開心的充實的<strong>殘波岬公園</strong>。以及接鄰的沖繩殘波岬<strong>Royal Hotel</strong>裡有各種海上活動，能夠充分享受度假氣氛。登上<strong>殘波岬燈塔</strong>可以一望浮在<strong>東海</strong>上的<strong>慶良間群島</strong>和<strong>粟國島</strong>。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "Bios之丘",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FBiosHill.webp?alt=media&token=7d33dfea-de18-49a4-afba-ef96b886c8b6",
+                        link: "https://bobbytravel.tw/bios-no-oka/",
+                        mapUrl: "https://maps.app.goo.gl/LQTeL1E554Hm35tn7",
+                        mapCode: "",
+                        description: "位在沖繩中部的「<strong>BIOS之丘</strong>」是有著亞熱帶森林及河流等自然環境的廣大公園，「<strong>BIOS</strong>」 在希臘語中即有「<strong>生命</strong>」的含意，這裡就是希望遊客能能重新感受生命氣息,與沖繩南部景點「<strong>Gangala之谷</strong>」有類似的意涵，最大特色就是，所有設施及活動都很適合親子參與，讓大人小孩都能在這片大自然中盡情玩耍。",
+                        attractions: [],
+                        nearFoods: []
+                    },
+                    {
+                        name: "ハユウ浜",
+                        imageUrl: "https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FSpots%2FHayuuBeach.webp?alt=media&token=d8b86277-d44c-487c-94aa-768303414956",
+                        link: "https://okinawa-bookmark.com/beach/onna-beach/uramaeda-beach/",
+                        mapUrl: "https://maps.app.goo.gl/TxHnvuv2jbWAPMiE9",
+                        mapCode: "",
+                        description: "這是一個非常美麗的海灘，以其細膩的白沙和湛藍的海水而聞名。附近有<strong>真榮田岬</strong>和<strong>讚內海灘</strong>，是浮潛、潛水和立式槳板衝浪 (SUP) 的熱門地點。<br>海灘週邊<strong>嚴禁路邊停車</strong>，路邊停車可能面臨<strong>罰款</strong>和<strong>拖車</strong>，因此請務必避免。如果停車場已滿，請稍等片刻或稍後再來。此外，停車場和海灘之間部分區域手機訊號覆蓋不到，建議您提前規劃步行路線。",
+                        attractions: [],
+                        nearFoods: []
+                    }
+                ]
+            }
+        ];
+
+        function getShortDate(dateStr) {
+            const match = dateStr.match(/(\d+)\s*月\s*(\d+)\s*日/);
+            return match ? `${match[1]}/${match[2]}` : (dateStr.split(' ')[0] || dateStr);
+        }
+
+        function scrollToElement(id) {
+            const target = document.getElementById(id);
+            const header = document.querySelector('.sticky-header');
+            if (target && header) {
+                const headerHeight = header.getBoundingClientRect().height;
+                const targetAbsoluteTop = target.getBoundingClientRect().top + window.scrollY;
+                window.scrollTo({ top: targetAbsoluteTop - headerHeight - 12, behavior: 'smooth' });
+            }
+        }
+
+        function scrollToSpot(spotName) {
+            const target = document.querySelector(`[data-spot-name="${spotName}"]`);
+            const header = document.querySelector('.sticky-header');
+            if (target && header) {
+                const headerHeight = header.getBoundingClientRect().height;
+                const targetAbsoluteTop = target.getBoundingClientRect().top + window.scrollY;
+                window.scrollTo({ top: targetAbsoluteTop - headerHeight - 12, behavior: 'smooth' });
+            }
+        }
+
+        function scrollToTop() {
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function renderSubNav() {
+            const subNavContainer = document.getElementById('sub-nav-container');
+            let subNavHtml = '';
+
+            if (currentTab === 'itinerary') {
+                document.body.classList.remove('food-view-active');
+                itineraryData.forEach((day, index) => {
+                    const dayId = `day-section-${index}`;
+                    const shortDate = getShortDate(day.date);
+                    subNavHtml += `<button class="sub-nav-btn" onclick="scrollToElement('${dayId}')">${shortDate}</button>`;
+                });
+            } else if (currentTab === 'food') {
+                document.body.classList.add('food-view-active');
+                
+                if (foodNavMode === 'main') {
+                    if (reservationsData.length > 0) {
+                        subNavHtml += `<button class="sub-nav-btn" onclick="scrollToElement('reserved-section-title')">📅 已訂位</button>`;
+                    }
+                    subNavHtml += `<button class="sub-nav-btn" onclick="scrollToElement('all-foods-section-title')">🍕 所有美食</button>`;
+                } else if (foodNavMode === 'categories') {
+                    const categories = [...new Set(foodsData.map(f => f.category))];
+                    categories.forEach((cat, index) => {
+                        const catId = `food-cat-${index}`;
+                        subNavHtml += `<button class="sub-nav-btn" onclick="scrollToElement('${catId}')">${cat}</button>`;
+                    });
+                }
+            }
+            subNavContainer.innerHTML = subNavHtml;
+        }
+
+        function switchTab(tabName) {
+            currentTab = tabName;
+            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-view').forEach(view => view.classList.remove('active-view'));
+
+            if (tabName === 'itinerary') {
+                document.querySelector('button[onclick="switchTab(\'itinerary\')"]').classList.add('active');
+                document.getElementById('itinerary-view').classList.add('active-view');
+            } else if (tabName === 'food') {
+                document.querySelector('button[onclick="switchTab(\'food\')"]').classList.add('active');
+                document.getElementById('food-view').classList.add('active-view');
+                foodNavMode = 'main'; 
+            }
+            renderSubNav();
+        }
+
+        window.onscroll = function() {
+            const bttButton = document.getElementById('back-to-top');
+            if (window.scrollY > 300) {
+                bttButton.classList.add('show');
+            } else {
+                bttButton.classList.remove('show');
+            }
+
+            if (currentTab === 'food') {
+                const allFoodsTitleElement = document.getElementById('all-foods-section-title');
+                const header = document.querySelector('.sticky-header');
+                
+                if (allFoodsTitleElement && header) {
+                    const headerHeight = header.getBoundingClientRect().height;
+                    const triggerTop = allFoodsTitleElement.getBoundingClientRect().top;
+
+                    if (triggerTop <= headerHeight + 20) {
+                        if (foodNavMode !== 'categories') {
+                            foodNavMode = 'categories';
+                            renderSubNav();
+                        }
+                    } else {
+                        if (foodNavMode !== 'main') {
+                            foodNavMode = 'main';
+                            renderSubNav();
+                        }
+                    }
+                }
+            }
+        };
+
+        function renderItinerary() {
+            const container = document.getElementById('itinerary-container');
+            let finalHtml = '';
+
+            itineraryData.forEach((day, index) => {
+                const dayId = `day-section-${index}`;
+                finalHtml += `<div class="date-title" id="${dayId}">${day.date}</div>`;
+
+                day.spots.forEach(spot => {
+                    let imageHtml = spot.imageUrl && spot.imageUrl.trim() !== "" 
+                        ? `<img src="${spot.imageUrl}" alt="${spot.name}">` 
+                        : `<div class="spot-image-placeholder"><span>景點圖片預留區<br>(367x250 景觀比例)</span></div>`;
+
+                    let nameHtml = spot.link 
+                        ? `<h2 class="spot-name"><a href="${spot.link}" target="_blank" rel="noopener noreferrer" class="spot-name-link">${spot.name} <span class="globe-icon">🌐</span></a></h2>` 
+                        : `<h2 class="spot-name">${spot.name}</h2>`;
+
+                    let toolbarItemsHtml = '';
+                    if (spot.mapUrl) toolbarItemsHtml += `<a href="${spot.mapUrl}" target="_blank" rel="noopener noreferrer" class="toolbar-btn">📍 查看地圖</a>`;
+                    if (spot.mapCode) {
+                        if (Array.isArray(spot.mapCode)) {
+                            spot.mapCode.forEach(code => { toolbarItemsHtml += `<span class="toolbar-tag">🗺️ MapCode: ${code}</span>`; });
+                        } else {
+                            toolbarItemsHtml += `<span class="toolbar-tag">🗺️ MapCode: ${spot.mapCode}</span>`;
+                        }
+                    }
+                    if (spot.customButtons && Array.isArray(spot.customButtons)) {
+                        spot.customButtons.forEach(btn => {
+                            if (btn.link && btn.link.trim() !== "") {
+                                toolbarItemsHtml += `<a href="${btn.link}" target="_blank" rel="noopener noreferrer" class="toolbar-btn">${btn.name}</a>`;
+                            } else {
+                                toolbarItemsHtml += `<span class="toolbar-tag">${btn.name}</span>`;
+                            }
+                        });
+                    }
+                    const toolbarContainerHtml = toolbarItemsHtml ? `<div class="spot-toolbar">${toolbarItemsHtml}</div>` : '';
+
+                    const attractionsList = spot.attractions.map(attr => {
+                        const isMainSpotInItinerary = itineraryData.some(d => d.spots.some(s => s.name === attr.title));
+                        return isMainSpotInItinerary 
+                            ? `<li><span onclick="scrollToSpot('${attr.title}')" class="inner-spot-link"><strong>${attr.title}</strong></span>：${attr.desc}</li>` 
+                            : `<li><strong>${attr.title}：</strong>${attr.desc}</li>`;
+                    }).join('');
+
+                    const foodsList = spot.nearFoods.map(item => {
+                        // 物件格式 { id: "food-xxx", branch: "分店名稱", desc: "自訂簡短介紹" }
+                        if (typeof item === 'object' && item !== null) {
+                            const foodItem = foodsData.find(f => f.id === item.id);
+                            if (!foodItem) return '';
+                            const branchText = item.branch ? `（${item.branch}）` : '';
+                            const descText = item.desc || foodItem.desc;
+                            return `<li><span onclick="jumpToFood('${item.id}')" class="inner-spot-link"><strong>${foodItem.name}${branchText}</strong></span>：${descText}</li>`;
+                        }
+                        // 字串格式，且能對應到foodsData裡的id：沒有自訂介紹，使用美食卡片原本的完整介紹
+                        const foodItem = foodsData.find(f => f.id === item);
+                        if (foodItem) {
+                            return `<li><span onclick="jumpToFood('${item}')" class="inner-spot-link"><strong>${foodItem.name}</strong></span>：${foodItem.desc}</li>`;
+                        }
+                        // 字串但找不到對應的id：視為自訂文字，直接顯示（無法點擊跳轉，因為沒有對應的美食卡片）
+                        return `<li><strong>${item}</strong></li>`;
+                    }).join('');
+
+                    const attractionsHtml = attractionsList
+                        ? `<details class="dropdown-item">
+                                <summary>🗺️ 周邊景點</summary>
+                                <div class="dropdown-inner"><ul>${attractionsList}</ul></div>
+                           </details>`
+                        : '';
+
+                    const foodsHtml = foodsList
+                        ? `<details class="dropdown-item">
+                                <summary>🍕 周邊美食</summary>
+                                <div class="dropdown-inner"><ul>${foodsList}</ul></div>
+                           </details>`
+                        : '';
+
+                    const dropdownGroupHtml = (attractionsHtml || foodsHtml)
+                        ? `<div class="spot-dropdown-group">${attractionsHtml}${foodsHtml}</div>`
+                        : '';
+
+                    finalHtml += `
+                    <article class="spot-card" data-spot-name="${spot.name}">
+                        <div class="spot-main-content">
+                            <div class="spot-image-square">${imageHtml}</div>
+                            <div class="spot-text-info">
+                                ${nameHtml}
+                                ${toolbarContainerHtml}
+                                <p class="spot-description">${spot.description}</p>
+                            </div>
+                        </div>
+                        ${dropdownGroupHtml}
+                    </article>
+                    `;
+                });
+            });
+
+            container.innerHTML = finalHtml;
+        }
+
+        function renderFoodOverview() {
+            const reservedContainer = document.getElementById('reserved-section-container');
+            const allFoodsContainer = document.getElementById('all-foods-section-container');
+            
+            let reservedHtml = '';
+            let allFoodsHtml = '';
+
+            function generateFoodCardHtml(food, isBookingCard, bookingTime) {
+                let imageHtml = food.imageUrl && food.imageUrl.trim() !== "" 
+                    ? `<img src="${food.imageUrl}" alt="${food.name}">` 
+                    : `<div class="spot-image-placeholder"><span>餐廳圖片預留區<br>(367x250 比例)</span></div>`;
+
+                let nameLinkHtml = food.link 
+                    ? `<a href="${food.link}" target="_blank" rel="noopener noreferrer" class="spot-name-link">${food.name} <span class="globe-icon">🌐</span></a>` 
+                    : `<span>${food.name}</span>`;
+
+                let priceHtml = food.price 
+                    ? `<span class="food-price-sub">💰 價位：${food.price}</span>` 
+                    : '';
+
+                let timeTagHtml = (isBookingCard && bookingTime) 
+                    ? `<div class="reserved-time-tag">⏰ 訂位時間：${bookingTime}</div>` 
+                    : '';
+
+                let toolbarItemsHtml = '';
+                if (food.mapLinks && Array.isArray(food.mapLinks)) {
+                    food.mapLinks.forEach(link => {
+                        const buttonText = link.branch ? `📍 ${link.branch}` : `📍 查看地圖`;
+                        toolbarItemsHtml += `<a href="${link.url}" target="_blank" rel="noopener noreferrer" class="toolbar-btn">${buttonText}</a>`;
+                    });
+                }
+                const toolbarContainerHtml = toolbarItemsHtml ? `<div class="spot-toolbar">${toolbarItemsHtml}</div>` : '';
+
+                return `
+                <article class="spot-card" data-food-id="${food.id}">
+                    <div class="spot-main-content">
+                        <div class="spot-image-square">${imageHtml}</div>
+                        <div class="spot-text-info">
+                            ${timeTagHtml}
+                            <h2 class="spot-name">
+                                ${nameLinkHtml}
+                                ${priceHtml}
+                            </h2>
+                            ${toolbarContainerHtml}
+                            <p class="spot-description">${food.desc}</p>
+                        </div>
+                    </div>
+                </article>
+                `;
+            }
+
+            if (reservationsData.length > 0) {
+                reservedHtml += `<div class="food-main-title" id="reserved-section-title">📅 已訂位餐廳 (Reserved)</div>`;
+                reservationsData.forEach(res => {
+                    const displayName = res.branchName ? `${res.name} (${res.branchName})` : res.name;
+                    
+                    const reservationFoodObj = {
+                        name: displayName,
+                        link: res.link,
+                        imageUrl: res.imageUrl,
+                        price: res.price,
+                        desc: res.desc,
+                        mapLinks: res.mapUrl ? [ { branch: res.branchName, url: res.mapUrl } ] : []
+                    };
+                    reservedHtml += generateFoodCardHtml(reservationFoodObj, true, res.time);
+                });
+            }
+            reservedContainer.innerHTML = reservedHtml;
+
+            allFoodsHtml += `<div class="food-main-title" id="all-foods-section-title">🍽️ 所有美食</div>`;
+            
+            const categories = [...new Set(foodsData.map(f => f.category))];
+            
+            categories.forEach((cat, index) => {
+                const catFoods = foodsData.filter(f => f.category === cat);
+                if (catFoods.length > 0) {
+                    const catId = `food-cat-${index}`;
+                    allFoodsHtml += `<div class="food-category-title" id="${catId}">${cat}</div>`;
+                    catFoods.forEach(food => {
+                        allFoodsHtml += generateFoodCardHtml(food, false, null); 
+                    });
+                }
+            });
+            allFoodsContainer.innerHTML = allFoodsHtml;
+        }
+
+        // 【新增】跨頁籤跳轉功能
+        function jumpToFood(foodId) {
+            // 1. 先切換到美食頁籤
+            switchTab('food');
+            
+            // 2. 稍微延遲一下，等頁面切換完成 (DOM Render) 再捲動
+            setTimeout(() => {
+                // 假設我們在 generateFoodCardHtml 中為每個餐廳卡片加入 data-id 屬性
+                // 我們先搜尋該 ID 的元素
+                const targetElement = document.querySelector(`[data-food-id="${foodId}"]`);
+                const header = document.querySelector('.sticky-header');
+                
+                if (targetElement && header) {
+                    const headerHeight = header.getBoundingClientRect().height;
+                    const targetAbsoluteTop = targetElement.getBoundingClientRect().top + window.scrollY;
+                    window.scrollTo({ top: targetAbsoluteTop - headerHeight - 20, behavior: 'smooth' });
+                }
+            }, 100);
+        }
+
+        window.onload = function() {
+            renderItinerary();
+            renderFoodOverview();
+            renderSubNav();
+        };
+        
+    </script>
+</body>
+</html>

@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>行程表</title>
+    <style>
+        /* ===================================================
+           🎨 全域色彩變數設定區（包含雙色與軸線規範）
+           =================================================== */
+        :root {
+            --page-bg: #F4F6F9;       /* 網頁大背景 */
+            --card-bg: #FFFFFF;       /* 卡片背景 */
+            --text-main: #2C3E50;     /* 主要文字 */
+            --text-sub: #888888;      /* 次要文字（時間、軸線） */
+            --timeline-line: rgba(0, 0, 0, 0.06); /* 🧭 軸線顏色：細緻固定的空氣感淺線 */
+            --note-color: #BA6B4A;    /* ⚠️ 注意事項文字顏色：溫柔低飽和度的警告橘 */
+            
+            /* 🐋 主題一：沖繩深邃海藍（玩水、戶外） */
+            --blue-bg: #C6E2E9;
+            --blue-text: #1A3A4B;
+            --blue-node: #A2C4CD;     /* 藍色卡片專屬小圓點顏色 */
+            
+            /* 🛒 主題二：提案 A 暖陽沙灘（購物、市區） */
+            --shop-bg: #F4EAE1;
+            --shop-text: #4A3B32;
+            --shop-node: #D9C5B2;     /* 暖色卡片專屬小圓點顏色 */
+            
+            /* 預設顏色變數 */
+            --header-bg: var(--blue-bg);
+            --header-text: var(--blue-text);
+            --node-color: var(--blue-node);
+        }
+
+        /* 💡 雙色樣式切換器：同時動態更新時光軸圓點顏色 */
+        .card-blue {
+            --header-bg: var(--blue-bg);
+            --header-text: var(--blue-text);
+            --node-color: var(--blue-node);
+        }
+        
+        .card-shop {
+            --header-bg: var(--shop-bg);
+            --header-text: var(--shop-text);
+            --node-color: var(--shop-node);
+        }
+
+        /* 全域設定 */
+        body {
+            font-family: "PingFang TC", "Microsoft JhengHei", -apple-system, sans-serif;
+            background-color: var(--page-bg);
+            color: var(--text-main);
+            margin: 0;
+            padding: 24px 16px calc(40px + env(safe-area-inset-bottom) + 60px) 16px;
+            display: flex;
+            justify-content: center;
+        }
+
+        .itinerary-container {
+            width: 100%;
+            max-width: 600px;
+        }
+
+        /* 卡片式架構 */
+        .day-card {
+            background-color: var(--card-bg);
+            border-radius: 16px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.02);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            margin-bottom: 28px;
+            overflow: hidden;
+        }
+
+        /* 標題區塊 */
+        .day-header {
+            background-color: var(--header-bg);
+            padding: 16px 24px;
+            margin: 0;
+            font-size: 16px;
+            font-weight: bold;
+            color: var(--header-text);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 內容包裹區 */
+        .card-content {
+            padding: 8px 24px 12px 24px;
+        }
+
+        /* 行程項目佈局：堅持 stretch 讓垂直軸線能流暢向下延伸，完美劃分空間 */
+        .itinerary-item {
+            display: flex;
+            align-items: stretch;
+            padding: 8px 0; 
+            border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+        }
+
+        .itinerary-item:last-child {
+            border-bottom: none;
+        }
+
+        /* 左欄：時間 */
+        .item-time {
+            width: 110px;
+            white-space: nowrap;
+            color: var(--text-sub);
+            font-size: 14px;
+            font-weight: 500;
+            flex-shrink: 0;
+            
+            /* 🧭 改為實線（solid）並大幅淡化存在感，讓劃分感自然不生硬 */
+            border-right: 1px solid var(--timeline-line); 
+            padding-right: 12px;
+            margin-right: 16px;
+            
+            box-sizing: border-box;
+            padding-top: 2px; 
+            
+            /* ⚠️ 啟用相對定位，作為小圓點的附著主體 */
+            position: relative; 
+        }
+
+        /* 📌 魔法核心：自動在時間右側生成時光軸精緻小圓點 */
+        .item-time::after {
+            content: "";
+            position: absolute;
+            right: -4px;          /* 圓心精準落在 1px 的邊線上 */
+            top: 9px;             /* 精準對齊第一行文字的水平中線 */
+            width: 7px;
+            height: 7px;
+            background-color: var(--node-color);
+            border-radius: 50%;
+            transition: background-color 0.3s;
+        }
+
+        /* 右欄：行程名稱 */
+        .item-activity {
+            flex-grow: 1;
+            color: var(--text-main);
+            font-size: 15px;
+            font-weight: 500;
+            text-align: left;
+            padding-top: 2px;
+            line-height: 1.5;     /* 確保多行文字與注意事項有舒適的呼吸空間 */
+        }
+
+        /* ⚠️ 精精確綁定的注意事項樣式 */
+        .item-note {
+            font-size: 13px;
+            font-weight: normal;
+            color: var(--note-color);
+            margin-top: 4px;      /* 與上方景點名稱微微拉開 */
+            line-height: 1.4;
+        }
+    </style>
+</head>
+<body>
+
+<div class="itinerary-container">
+
+    <div class="day-card card-shop">
+        <h2 class="day-header">📅 7/09 (四) ｜ 出發</h2>
+        
+        <div class="card-content">
+            <div class="itinerary-item">
+                <div class="item-time">16:30 - 18:30</div>
+                <div class="item-activity">
+                    桃園國際機場
+                    <div class="item-note">⚠️ 最晚16:30要到機場</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">20:50 - 21:50</div>
+                <div class="item-activity">那霸機場</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">21:50 - </div>
+                <div class="item-activity">飯店休息(Y's Inn Naha Oroku Ekimae)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="day-card card-shop">
+        <h2 class="day-header">📅 7/10 (五) ｜ 市區購物 ｜ 🌸花襯衫</h2>
+        
+        <div class="card-content">
+            <div class="itinerary-item">
+                <div class="item-time"><span style="visibility: hidden;">00:00</span> - 10:00</div>
+                <div class="itinerary-activity item-activity">Y's Inn Naha Oroku Ekimae</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">10:00 - 11:00</div>
+                <div class="item-activity">飯店門口取車</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">11:30 - 14:00</div>
+                <div class="item-activity">國際通(午餐)</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">14:30 - 16:00</div>
+                <div class="item-activity">波上宮</div>
+            </div>
+            
+            <div class="itinerary-item">
+                <div class="item-time">16:50 - 20:00</div>
+                <div class="item-activity">
+                    Birthday港川店<br>San-A Urasoe West Coast PARCO CITY
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">21:30 - </div>
+                <div class="item-activity">民宿休息(戀之沖繩 @ 長浜 民宿)</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="day-card card-blue">
+        <h2 class="day-header">📅 7/11 (六) ｜ 浮潛</h2>
+        
+        <div class="card-content">
+            <div class="itinerary-item">
+                <div class="item-time"><span style="visibility: hidden;">00:00</span> - 10:00</div>
+                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">10:20 - 12:20</div>
+                <div class="item-activity">
+                    琉球村(早午餐)
+                    <div class="item-note">⚠️ Klook FunPass行程，有要浮潛的簡單吃就好</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">12:30 - 17:30</div>
+                <div class="item-activity">青之洞窟(浮潛)</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">17:30 - 19:30</div>
+                <div class="item-activity">
+                    島豬與琉球牛 燦別邸
+                    <div class="item-note">⚠️ 已訂位17:30晚餐</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">20:30 - </div>
+                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="day-card card-blue">
+        <h2 class="day-header">📅 7/12 (日) ｜ 水族館 ｜ 🌊藍白配</h2>
+        
+        <div class="card-content">
+            <div class="itinerary-item">
+                <div class="item-time"><span style="visibility: hidden;">00:00</span> - 10:00</div>
+                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">10:00 - 14:00</div>
+                <div class="item-activity">
+                    美麗海水族館
+                    <div class="item-note">⚠️ Klook FunPass行程</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">15:00 - 16:30</div>
+                <div class="item-activity">
+                    古宇利橋
+                    <div class="item-note">⚠️ 古宇利海洋塔為Klook FunPass行程</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">17:30 - 19:30</div>
+                <div class="item-activity">
+                    燒肉本部牧場 本部總店
+                    <div class="item-note">⚠️ 已訂位17:30晚餐</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">21:00 - </div>
+                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="day-card card-shop">
+        <h2 class="day-header">📅 7/13 (一) ｜ 回家</h2>
+        
+        <div class="card-content">
+            <div class="itinerary-item">
+                <div class="item-time"><span style="visibility: hidden;">00:00</span> - 10:00</div>
+                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">11:00 - 16:45</div>
+                <div class="item-activity">永旺夢樂城沖繩來客夢<br>ASHIBINAA Outlet</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">16:50 - 17:50</div>
+                <div class="item-activity">OTS臨空豐崎營業所(那霸機場)</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">18:20 - 15:00</div>
+                <div class="item-activity">
+                    那霸機場
+                    <div class="item-note">⚠️ 最晚18:20要到機場</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>租車資訊</title>
+    <style>
+        :root {
+            --primary-color: #2b6cb0;
+            --secondary-color: #edf2f7;
+            --text-color: #2d3748;
+            --border-color: #e2e8f0;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif, "Microsoft JhengHei";
+            background-color: #f7fafc;
+            color: var(--text-color);
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px 16px calc(60px + env(safe-area-inset-bottom) + 60px) 16px;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        }
+
+        h2 {
+            font-size: 18px;
+            color: var(--primary-color);
+            margin-top: 0;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+        }
+
+        /* 區塊通用樣式 */
+        .section {
+            background: #ffffff;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 25px;
+        }
+
+        /* 新增：獨立出來的車行頁首樣式 */
+        .vendor-header-independent {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid var(--secondary-color);
+        }
+
+        .vendor-logo {
+            width: 150px;
+            height: 50px;
+            /* background-color: var(--primary-color); */
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            color: #ffffff;
+            font-size: 11px;
+            letter-spacing: 1px;
+        }
+
+        .vendor-name {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        /* 1. 純粹的車型資訊區塊 */
+        .car-info-section {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+        }
+
+        .car-display {
+            display: flex;
+            align-items: center;
+            gap: 25px;
+            width: 100%;
+        }
+
+        /* 圖片輪播樣式 */
+        .carousel-container {
+            width: 200px;
+            height: 120px;
+            background-color: #edf2f7;
+            border-radius: 6px;
+            position: relative;
+            overflow: hidden;
+            flex-shrink: 0; /* 防止圖片被壓縮 */
+        }
+
+        .carousel-slides {
+            width: 100%;
+            height: 100%;
+        }
+
+        .carousel-slide {
+            display: none;
+            width: 100%;
+            height: 100%;
+            align-items: center;
+            justify-content: center;
+            color: #a0aec0;
+            font-size: 12px;
+            text-align: center;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
+
+        .carousel-slide.active {
+            display: flex;
+        }
+
+        /* 輪播切換按鈕 */
+        .carousel-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.25);
+            color: white;
+            border: none;
+            padding: 4px 6px;
+            cursor: pointer;
+            border-radius: 3px;
+            font-size: 12px;
+            user-select: none;
+        }
+
+        .carousel-btn:hover {
+            background: rgba(0, 0, 0, 0.5);
+        }
+
+        .carousel-btn.prev { left: 5px; }
+        .carousel-btn.next { right: 5px; }
+
+        /* 輪播指示圓點 */
+        .carousel-dots {
+            position: absolute;
+            bottom: 5px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            margin: 0 2px;
+            background: #cbd5e0;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .dot.active {
+            background: var(--primary-color);
+        }
+
+        /* 車型名稱連結樣式 */
+        .car-link {
+            color: var(--primary-color);
+            text-decoration: underline;
+            transition: color 0.2s;
+        }
+
+        .car-link:hover {
+            color: #1a4975;
+        }
+
+        .car-details ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+
+        .car-details li {
+            margin-bottom: 5px;
+        }
+
+        .badge {
+            background-color: var(--secondary-color);
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        /* 2. 取還車時間地點 */
+        .rental-time-location {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .time-box {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid var(--primary-color);
+        }
+
+        .time-box.return {
+            border-left-color: #e53e3e;
+        }
+
+        .time-title {
+            font-weight: bold;
+            margin-bottom: 8px;
+            font-size: 15px;
+        }
+
+        /* 3. 配車名單 */
+        .car-group {
+            background-color: #f8fafc;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 15px;
+        }
+
+        .car-group:last-child {
+            margin-bottom: 0;
+        }
+
+        .car-group-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+
+        .passenger-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .passenger-tag {
+            background-color: #ffffff;
+            color: #4a5568;
+            border: 1px solid #e2e8f0;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 13px;
+        }
+
+        /* 主副駕駛專屬顏色 */
+        .passenger-tag.main-driver {
+            background-color: #feebc8;
+            color: #dd6b20;
+            border: 1px solid #fbd38d;
+            font-weight: bold;
+        }
+
+        .passenger-tag.sub-driver {
+            background-color: #eef2ff;
+            color: #4338ca;
+            border: 1px solid #c7d2fe;
+            font-weight: bold;
+        }
+
+        /* 4. 費用明細表格 */
+        .fee-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+
+        .fee-table th, .fee-table td {
+            padding: 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .fee-table th {
+            background-color: var(--secondary-color);
+            font-weight: 600;
+        }
+
+        .fee-table td.amount {
+            text-align: right;
+        }
+
+        .fee-table tr.total-row {
+            font-weight: bold;
+            font-size: 18px;
+            color: #e53e3e;
+            border-bottom: 2px solid #e53e3e;
+        }
+
+        /* 📱 手機版 RWD 優化 */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            
+            .container {
+                padding: 20px;
+            }
+
+            .rental-time-location {
+                grid-template-columns: 1fr;
+            }
+
+            /* 手機版：車行名稱置中 */
+            .vendor-header-independent {
+                justify-content: center;
+                flex-direction: column;
+                gap: 8px;
+                text-align: center;
+            }
+
+            /* 手機版：車型框框內改為直式商品卡排版 */
+            .car-info-section {
+                padding: 15px;
+            }
+
+            .car-display {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+                gap: 15px;
+            }
+
+            .carousel-container {
+                width: 100%; /* 寬度拉滿，更有大圖氣勢 */
+                height: 140px;
+            }
+
+            .car-details ul {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="vendor-header-independent">
+        <div class="vendor-logo"><img src="https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FCar_Info%2FOTS_LOGO.webp?alt=media&token=e159061a-17e4-4454-ac7a-6fe2c78d367c" style="width:100%; height:80%; object-fit:cover;"></div>
+        <div class="vendor-name">OTS RENT-A-CAR</div>
+    </div>
+
+    <div class="section car-info-section">
+        <div class="car-display">
+            <div class="carousel-container">
+                <div class="carousel-slides">
+                    <div class="carousel-slide active"><img src="https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FCar_Info%2FCar_Exterior.webp?alt=media&token=0133272a-8f8e-4bbf-a88a-60ca5e75393b" style="width:150%; height:100%; object-fit: cover;"></div>
+                    <div class="carousel-slide"><img src="https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FCar_Info%2FCar_Interior_1.webp?alt=media&token=42cd283e-85c6-423d-9b87-bcb44ba8101b" style="width:200%; height:100%; object-fit: cover;"></div>
+                    <div class="carousel-slide"><img src="https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FCar_Info%2FCar_Interior_2.webp?alt=media&token=d7dae20b-b8de-4eec-b3c7-35c772980a19" style="width:200%; height:100%; object-fit: cover;"></div>
+                    <div class="carousel-slide"><img src="https://firebasestorage.googleapis.com/v0/b/briotravelgroupdatabase.firebasestorage.app/o/BrioTravelBook_Okinawa2026_PageImages%2FCar_Info%2FCar_Interior_3.webp?alt=media&token=be913faf-d814-4418-98f8-2758e3c7a94a" style="width:200%; height:100%; object-fit: cover;"></div>
+                </div>
+                <button class="carousel-btn prev" onclick="moveSlide(-1)">&#10094;</button>
+                <button class="carousel-btn next" onclick="moveSlide(1)">&#10095;</button>
+                <div class="carousel-dots">
+                    <span class="dot active" onclick="currentSlide(0)"></span>
+                    <span class="dot" onclick="currentSlide(1)"></span>
+                    <span class="dot" onclick="currentSlide(2)"></span>
+                    <span class="dot" onclick="currentSlide(3)"></span>
+                </div>
+            </div>
+
+            <div class="car-details">
+                <h3 style="margin: 0 0 8px 0; font-size: 20px;">
+                    <a href="https://www.otsinternational.jp/otsrentacar/cn/okinawa/class/wbclass/" target="_blank" class="car-link">【MITSUBISHI】DELICA D:5</a>
+                </h3>
+                <ul>
+                    <li><span class="badge">8人座</span> <span class="badge">自排</span></li>
+                    <li style="font-size: 14px; color: #718096; margin-top: 5px;">可容納8人，或5人和對應行李</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="section rental-time-location">
+        <div class="time-box">
+            <div class="time-title" style="color: #2b6cb0;">🛫 取車資訊</div>
+            <div><strong>時間：</strong>2026/07/10 (五) 10:00</div>
+            <div style="margin-top: 5px;"><strong>地點：</strong>Y's Inn Naha Oroku Ekimae(飯店門口)</div>
+        </div>
+        <div class="time-box return">
+            <div class="time-title" style="color: #e53e3e;">🛬 還車資訊</div>
+            <div><strong>時間：</strong>2026/07/13 (一) 18:00</div>
+            <div style="margin-top: 5px;"><strong>地點：</strong>OTS臨空豐崎營業所（那霸機場）</div>
+        </div>
+    </div>
+
+    <div class="section">
+        <h2>👥 配車名單</h2>
+        
+        <div class="car-group">
+            <div class="car-group-title">🚘 1 號車 配車名單 (5人)</div>
+            <div class="passenger-row">
+                <span class="passenger-tag main-driver">👑 主駕駛：興倫</span>
+                <span class="passenger-tag sub-driver">🥈 副駕駛：Ob</span>
+                <span class="passenger-tag">乘客：思綺</span>
+                <span class="passenger-tag">乘客：薯餅</span>
+                <span class="passenger-tag">乘客：和叡</span>
+            </div>
+        </div>
+
+        <div class="car-group">
+            <div class="car-group-title">🚘 2 號車 配車名單 (5人)</div>
+            <div class="passenger-row">
+                <span class="passenger-tag main-driver">👑 主駕駛：柏瑋</span>
+                <span class="passenger-tag sub-driver">🥈 副駕駛：淳玲</span>
+                <span class="passenger-tag">乘客：雅筑</span>
+                <span class="passenger-tag">乘客：阿丁</span>
+                <span class="passenger-tag">乘客：家瑗</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="section" style="margin-bottom: 0;">
+        <h2>💰 費用明細(單台)</h2>
+        <table class="fee-table">
+            <thead>
+                <tr>
+                    <th>項目說明</th>
+                    <th style="text-align: right;">金額</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>基本費用</td>
+                    <td class="amount">￥42900</td>
+                </tr>
+                <tr>
+                    <td>免責</td>
+                    <td class="amount">￥6600</td>
+                </tr>
+                <tr>
+                    <td>豪華安心險</td>
+                    <td class="amount">￥4840(￥1210/24小時)</td>
+                </tr>
+                <tr>
+                    <td>定額ETC卡</td>
+                    <td class="amount">￥3000(￥3000/120小時內)</td>
+                </tr>
+                <tr class="total-row">
+                    <td>總計</td>
+                    <td class="amount">￥57340<br>(約台幣11470)</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+    let slideIndex = 0;
+    const slides = document.querySelectorAll('.carousel-slide');
+    const dots = document.querySelectorAll('.dot');
+
+    function showSlide(index) {
+        if (index >= slides.length) slideIndex = 0;
+        if (index < 0) slideIndex = slides.length - 1;
+        
+        slides.forEach(slide => slide.classList.remove('active'));
+        dots.forEach(dot => dot.classList.remove('active'));
+        
+        slides[slideIndex].classList.add('active');
+        dots[slideIndex].classList.add('active');
+    }
+
+    function moveSlide(n) {
+        slideIndex += n;
+        showSlide(slideIndex);
+    }
+
+    function currentSlide(n) {
+        slideIndex = n;
+        showSlide(slideIndex);
+    }
+</script>
+
+</body>
+</html>

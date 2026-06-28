@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="zh-Hant-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>離線頁面</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body, html {
+            min-height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #0f172a;
+            color: #ffffff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 24px;
+        }
+        .offline-card {
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 24px;
+            padding: 40px 28px;
+            max-width: 360px;
+        }
+        .offline-icon { font-size: 2.8rem; margin-bottom: 16px; }
+        .offline-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 8px; }
+        .offline-text { font-size: 0.9rem; color: rgba(255,255,255,0.7); line-height: 1.6; margin-bottom: 24px; }
+        .retry-btn {
+            background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+            color: #ffffff;
+            border: none;
+            padding: 10px 28px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="offline-card">
+        <div class="offline-icon">📡</div>
+        <div class="offline-title">目前沒有網路連線</div>
+        <div class="offline-text">這個頁面還沒有被快取下來，請確認網路連線後再試一次。已經瀏覽過的頁面，離線時仍然可以正常開啟。</div>
+        <button class="retry-btn" onclick="location.reload()">重新整理</button>
+    </div>
+</body>
+</html>

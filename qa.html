@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Q&A</title>
+<style>
+    /* --- 1. 設計風格、氛圍與色彩規範 (MD 1 & 3) --- */
+    :root {
+        --page-bg: #F4F6F9;          /* 極淺灰藍色背景 */
+        --card-bg: #FFFFFF;          /* 純白卡片背景 */
+        --text-main: #2C3E50;        /* 主要標題/大字：深灰藍 */
+        --text-sub: #7F8C8D;         /* 次要說明/細項：淺灰色 */
+        --accent-blue: #3498db;      /* 展開時的柔和藍色 */
+        --border-color: rgba(0,0,0,0.06); /* 極淡的灰色框線 */
+        --alert-bg: #E1E8ED;         /* 提示區塊：淡藍灰色背景 */
+        
+        /* 分帳明細表風格的標題背景色 (低飽和度灰藍) */
+        --title-bg: #EBF0F5;         
+        --accent-coral: #E67E22;     /* 區塊左側裝飾條顏色 */
+    }
+
+    body { 
+        font-family: 'PingFang TC', 'Microsoft JhengHei', sans-serif; /* MD 4: 無襯線字體 */
+        padding: 40px 16px calc(40px + env(safe-area-inset-bottom) + 60px) 16px;
+        background-color: var(--page-bg); 
+        color: #333;
+        margin: 0;
+    }
+
+    #user-view { 
+        max-width: 800px; 
+        margin: 0 auto; 
+    }
+    
+    /* --- 2. 卡片式架構、佈局與圓角陰影 (MD 2) --- */
+    .section-group { 
+        background: var(--card-bg); 
+        margin-bottom: 28px; 
+        border-radius: 16px;        /* MD 2: 大圓角（12px - 16px） */
+        border: 1px solid var(--border-color); 
+        overflow: hidden; 
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.03); /* MD 2: 微弱、擴散度高的淺灰色陰影 */
+    }
+
+    /* 區塊大標題 (分帳系統明細表表頭風格) */
+    .section-title { 
+        padding: 16px 20px; 
+        font-size: 1.2em; 
+        font-weight: bold; 
+        color: var(--text-main); 
+        background-color: var(--title-bg); 
+        border-bottom: 1px solid var(--border-color);
+        border-left: 6px solid var(--accent-coral); /* 左側裝飾條 */
+        display: flex;
+        align-items: center;
+    }
+    
+    details { 
+        border-bottom: 1px solid #F4F6F9; 
+    }
+    details:last-child { 
+        border-bottom: none; 
+    }
+    
+    /* 子項目標題 — 增加左側 Padding 避免文字太靠左切邊 */
+    summary { 
+        padding: 16px 20px 16px 26px; /* 左側微調至 26px，與大標題視覺對齊 */
+        cursor: pointer; 
+        list-style: none; 
+        font-weight: 500; 
+        color: var(--text-main);
+        display: flex; 
+        align-items: center; 
+        transition: background 0.2s; 
+    }
+    summary:hover { 
+        background-color: #FAFBFC; 
+    }
+    
+    /* 展開提示圖標移到最前面 */
+    summary::before { 
+        content: '＋'; 
+        font-weight: bold; 
+        color: #BBB; 
+        font-size: 0.9em;
+        margin-right: 14px; /* 拉開與標題文字的間距 */
+        transition: transform 0.2s; 
+        display: inline-block;
+        width: 14px; /* 固定寬度，確保文字完美對齊 */
+    }
+    details[open] summary::before { 
+        content: '－'; 
+        color: var(--accent-blue); 
+    }
+    
+    /* 移除原本在最後面的圖標 */
+    summary::after { 
+        content: none; 
+    }
+    
+    /* 展開內容區塊 */
+    .content-box { 
+        padding: 4px 20px 20px 54px; 
+        color: var(--text-sub);      
+        font-size: 0.95em; 
+        line-height: 1.7; 
+        background-color: #FCFDFE; 
+        /* 💡 新增：允許保留換行符號，防止文字擠在一起 */
+        white-space: pre-wrap; 
+    }
+
+    /* 超連結在閱讀畫面時的漂亮樣式 */
+    .content-box a {
+        color: var(--accent-blue);
+        text-decoration: none;
+        border-bottom: 1px dashed var(--accent-blue);
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+    .content-box a:hover {
+        color: #2980b9;
+        border-bottom-style: solid;
+    }
+
+    /* 💡 新增：行內程式碼反白樣式 (Markdown 的 ` 字元效果) */
+    .content-box code {
+        background-color: #ECEFF1;
+        color: #CFD8DC;
+        color: #2c3e50;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: Consolas, Monaco, monospace;
+        font-size: 0.9em;
+        margin: 0 2px;
+    }
+
+    /* --- 3. 管理員後台介面樣式 --- */
+    #admin-mask { 
+        display: none; 
+        position: fixed; 
+        top: 0; left: 0; width: 100%; height: 100%; 
+        background: rgba(44, 62, 80, 0.4); 
+        z-index: 1000; 
+        overflow-y: auto; 
+    }
+    #admin-panel { 
+        background: var(--card-bg); 
+        width: 95%; 
+        max-width: 900px; 
+        margin: 40px auto; 
+        padding: 30px; 
+        border-radius: 16px; 
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1); 
+    }
+    
+    .admin-header { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 24px; 
+        border-bottom: 1px solid #EEE; 
+        padding-bottom: 12px; 
+        color: var(--text-main);
+    }
+    .close-btn { cursor: pointer; font-size: 24px; color: var(--text-sub); }
+    
+    .admin-section { 
+        border: 1px solid #EAEAEA; 
+        border-radius: 12px; 
+        padding: 20px; 
+        margin-bottom: 20px; 
+        background-color: #FAFAFA; 
+    }
+    .admin-section-header { display: flex; gap: 8px; margin-bottom: 15px; align-items: center; }
+    
+    .editable-title, .editable-content { 
+        font-family: inherit;
+        border: 1px solid #DCDCDC; 
+        border-radius: 8px; 
+        padding: 8px 12px; 
+        box-sizing: border-box;
+        background: #FFF;
+        color: var(--text-main);
+    }
+    .editable-title { font-weight: bold; font-size: 1.05em; flex-grow: 1; }
+    .editable-title:focus, .editable-content:focus { border-color: var(--accent-blue); background: #fff; outline: none; }
+    
+    .admin-item-table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+    .admin-item-table th, .admin-item-table td { border: 1px solid #EAEAEA; padding: 12px; text-align: left; }
+    .admin-item-table th { background-color: #F4F6F9; color: var(--text-main); font-weight: 600; }
+    .admin-item-table th:nth-child(1) { width: 25%; }
+    .admin-item-table th:nth-child(2) { width: 50%; }
+    .admin-item-table th:nth-child(3) { width: 25%; } 
+    .editable-content { width: 100%; }
+    
+    .btn { padding: 8px 14px; border: none; border-radius: 8px; cursor: pointer; font-size: 13px; font-weight: 500; transition: background 0.2s; }
+    .btn-add { background-color: #2ecc71; color: #fff; }
+    .btn-add:hover { background-color: #27ae60; }
+    .btn-del { background-color: #e74c3c; color: #fff; padding: 6px 10px; }
+    .btn-del:hover { background-color: #c0392b; }
+    
+    .btn-move { background-color: #EBF0F5; color: #555; padding: 6px 8px; font-size: 12px; border: 1px solid #DCDCDC; }
+    .btn-move:hover { background-color: #DCE4EC; color: #2C3E50; }
+    .btn-move:disabled { background-color: #F5F5F5; color: #CCC; border-color: #EAEAEA; cursor: not-allowed; }
+
+    .btn-save { background-color: var(--text-main); color: #fff; font-size: 16px; padding: 12px 28px; }
+    .btn-save:hover { background-color: #1a252f; }
+    
+    /* 預設隱藏管理按鈕，由 JS 判斷開關狀態決定是否開啟 */
+    #admin-toggle { 
+        display: none; 
+        position: fixed; 
+        bottom: 24px; 
+        right: 24px; 
+        background: var(--text-main); 
+        color: #fff; 
+        border: none; 
+        padding: 12px 20px; 
+        border-radius: 50px; 
+        cursor: pointer; 
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15); 
+        z-index: 999; 
+        font-weight: bold;
+    }
+</style>
+</head>
+<body>
+
+<div id="user-view"></div>
+
+<button id="admin-toggle" onclick="openAdmin()">⚙️ 開啟後台管理</button>
+
+<div id="admin-mask">
+    <div id="admin-panel">
+        <div class="admin-header">
+            <h3>🧰 可視化內容編輯器</h3>
+            <span class="close-btn" onclick="closeAdmin()">×</span>
+        </div>
+        
+        <div id="admin-editor-content"></div>
+        
+        <div style="text-align: center; margin-top: 30px;">
+            <button class="btn btn-save" onclick="saveAndExport()">💾 儲存並直接複製配置碼</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // =========================================================================
+    // 【💡 後台硬開關控制面板】
+    //  false = 關閉後台（路人模式，右下角管理按鈕完全消失，最安全）
+    //  true  = 開啟後台（編輯模式，右下角會浮現按鈕供您點擊修改）
+    // =========================================================================
+    const isEditable = true; 
+
+    // --- 預設資料 ---
+    // 💡 修正處：將預設資料加入了粗體、換行與行內代碼，方便您直接看效果
+    const defaultData = [
+        { title: "✈️ 航班相關", items: [{ q: "航班規定 (隨身/託運)", a: "⚠️ **重要貴重物品請隨身攜帶**\n\n1. 行動電源、鋰電池 `不可託運`。\n2. 隨身液體每瓶限 `100ml` 以內，需裝入透明夾鏈袋。" }, { q: "報到與注意事項", a: "請務必提前 **3 小時** 抵達機場。\n準備好護照正本與電子機票。" }] },
+        { title: "🏨 住宿資訊", items: [{ q: "飯店聯絡方式", a: "飯店名稱：東京住宿大飯店\nMapCode：`123 456 789*12`\n詳細交通：請參考 [Google地圖](https://maps.google.com) 導航。" }, { q: "入住與退房說明", a: "*Check-in* 時間：15:00 後\n*Check-out* 時間：11:00 前" }] }
+    ];
+
+    // ====== [核心數據儲存變數] ======
+    const savedConfig = "JTVCJTdCJTIydGl0bGUlMjIlM0ElMjIlRjAlOUYlQTclQjMlRTQlQkElOEIlRTUlODklOEQlRTYlQkElOTYlRTUlODIlOTklMjIlMkMlMjJpdGVtcyUyMiUzQSU1QiU3QiUyMnElMjIlM0ElMjIlRTklQTclOTUlRTclODUlQTclRTglQUQlQUYlRTYlOUMlQUMlMjIlMkMlMjJhJTIyJTNBJTIyT2IlRTMlODAlODElRTglODglODglRTUlODAlQUIlRTMlODAlODElRTYlOUYlOEYlRTclOTElOEIlRTMlODAlODElRTYlQjclQjMlRTclOEUlQjIlMjA0JUU0JUJEJThEJUU5JUE3JTk1JUU5JUE3JTlCJUU0JUJBJUJBJUU4JUFCJThCJUU3JUEyJUJBJUU4JUFBJThEJUU5JUE3JTk1JUU3JTg1JUE3JUU4JUFEJUFGJUU2JTlDJUFDJUU1JUI3JUIyJUU1JTgyJTk5JUU1JUE2JUE1JTIyJTdEJTJDJTdCJTIycSUyMiUzQSUyMlZpc2l0JTIwV2ViJTIwSmFwYW4lMjIlMkMlMjJhJTIyJTNBJTIyJUUyJTk3JTg2JUU1JTg3JUJBJUU3JTk5JUJDJUU1JTg5JThEJUU1JTg1JUE5JUU5JTgwJUIxKDYlMkYyNSklRTUlOEYlQUYlRTklOTYlOEIlRTUlQTclOEIlRTUlQTElQUIlRTUlQUYlQUIlNUJWaXNpdCUyMFdlYiUyMEphcGFuJTVEKGh0dHBzJTNBJTJGJTJGd3d3LmZ1bmxpZGF5LmNvbSUyRnBvc3RzJTJGMjAyNi1qYXBhbi1lbnRyeSUyRiklRUYlQkMlOEMlRTQlQkIlQTUlRTUlOEElQTAlRTklODAlOUYlRTUlODUlQTUlRTklOTclOUMlRTklODAlQjIlRTUlQkElQTYlNUNuJUUyJTk3JTg2JUU5JUEzJUFGJUU1JUJBJTk3JUU4JUIzJTg3JUU4JUE4JThBJUU4JUE5JUIzJUU4JUE2JThCJUU0JUI4JThCJUU2JTk2JUI5KiolRTQlQkQlOEYlRTUlQUUlQkYqKiVFNSU4RCU4MCVFNSVBMSU4QSVFMyU4MCU4MiU1Q24lRTIlOTclODYlRTYlOUMlODAlRTYlOTklOUElRTYlOTYlQkMlRTUlODUlQTUlRTklOTclOUMlRTUlODklOEQ2JUU1JUIwJThGJUU2JTk5JTgyJUU1JUExJUFCJUU1JUFGJUFCJUU1JUFFJThDJUU3JTk1JUEyJUUzJTgwJTgyJTVDbiVGMCU5RiU5MSU4OSU1QiVFNSU4MiVCMyVFOSU4MCU4MSVFOSU5NiU4MCU1RChodHRwcyUzQSUyRiUyRnd3dy52ancuZGlnaXRhbC5nby5qcCUyRm1haW4lMkYlMjMlMkZ2andwbG8wMDEpKCVFNSU4QiU5OSVFNSVCRiU4NSVFOCVBQSU4RCVFNiU5OCU4RSVFNiU5OCVBRiVFOSU4MCU5OSVFNSU4MCU4QiVFNyVCNiVCMiVFNSU5RCU4MCVFRiVCQyU4QyVFNSU4NiU4RCVFOSU5NiU4QiVFNSVBNyU4QiVFNSVBMSVBQiVFNSVBRiVBQiVFRiVCQyU4QyVFNCVCQiVBNSVFNSU4NSU4RCVFNSU4MCU4QiVFNCVCQSVCQSVFOCVCMyU4NyVFNiU5NiU5OSVFOCVBMiVBQiVFNyVBQiU4QSVFNSU4RiU5NiklNUNuJUYwJTlGJTkxJTg5JTVCJUU1JUExJUFCJUU1JUFGJUFCJUU2JTk1JTk5JUU1JUFEJUI4JTVEKGh0dHBzJTNBJTJGJTJGd3d3LmZ1bmxpZGF5LmNvbSUyRnBvc3RzJTJGMjAyNi1qYXBhbi1lbnRyeSUyRiklMjIlN0QlMkMlN0IlMjJxJTIyJTNBJTIyJUU4JUExJThDJUU2JTlEJThFJUU2JUI4JTg1JUU1JTk2JUFFJTIyJTJDJTIyYSUyMiUzQSUyMiVFMiU5NyU4NiVFNiU4RiU5QiVFNiVCNCU5NyVFOCVBMSVBMyVFNyU4OSVBOSU1Q24lRTIlOTclODYlRTclOUIlQTUlRTYlQjQlOTclRTclOTQlQTglRTUlODUlQjclNUNuJUUyJTk3JTg2JUU1JTgwJThCJUU0JUJBJUJBJUU4JUExJTlCJUU3JTk0JTlGJUU3JTk0JUE4JUU1JTkzJTgxKCVFOCVBMSU5QiVFNyU5NCU5RiVFNiVBMyU4OSVFMyU4MCU4MSVFNSU4OCVBRSVFOSVBQyU4RCVFNSU4OCU4MCVFNyVBRCU4OSklNUNuJUUyJTk3JTg2U2ltJUU1JThEJUExJTJGZVNpbSU1Q24lRTIlOTclODYlRTUlODUlODUlRTklOUIlQkIlRTUlOTklQTgoJUU0JUI4JThEJUU3JTk0JUE4JUU4JUJEJTg5JUU2JThFJUE1JUU5JUEwJUFEKSU1Q24lRTIlOTclODYlRTYlQjMlQjMlRTglQTElQTMlRTMlODAlODElRTclOEUlQTklRTYlQjAlQjQlRTclOTQlQTglRTUlODUlQjclMjIlN0QlMkMlN0IlMjJxJTIyJTNBJTIyRHJlc3MlMjBDb2RlJTIyJTJDJTIyYSUyMiUzQSUyMiVFOSU4MiU4NCVFNiVCMiU5MiVFNiVCMSVCQSVFNSVBRSU5QSUyMiU3RCU1RCU3RCUyQyU3QiUyMnRpdGxlJTIyJTNBJTIyJUYwJTlGJTkyJUI0JUU4JUIyJUJCJUU3JTk0JUE4JTIyJTJDJTIyaXRlbXMlMjIlM0ElNUIlN0IlMjJxJTIyJTNBJTIyJUU0JUJCJTk4JUU2JUFDJUJFJUU2JTk5JTgyJUU5JTk2JTkzJTIyJTJDJTIyYSUyMiUzQSUyMiVFNyVBQiVBRiVFNSU4RCU4OCVFNSVCRSU4QyVFNSVCMCVCMSVFNSU4RiVBRiVFNCVCQiVBNSVFOSU5NiU4QiVFNSVBNyU4QiVFNyVCOSVCMyVFNCVCQSU4NiUyMiU3RCUyQyU3QiUyMnElMjIlM0ElMjIlRTQlQkIlOTglRTYlQUMlQkUlRTQlQkElQkElMjIlMkMlMjJhJTIyJTNBJTIyJUU3JUI1JUIxJUU0JUI4JTgwJUU1JThDJUFGJUU3JUI1JUE2T2IlRUYlQkMlOEMlRTglQUIlOEIlRTUlOEYlODMlRTklOTYlQjElRTglQjIlQkIlRTclOTQlQTglRTYlOTglOEUlRTclQjQlQjAlMkYlRTUlOEMlQUYlRTYlQUMlQkUlRTglQjMlODclRTglQTglOEEoJUU5JTgwJTk5JUU4JUEzJUExJUU1JThBJUEwJUU4JUI2JTg1JUU5JTgwJUEzJUU3JUI1JTkwKSUyMiU3RCU1RCU3RCUyQyU3QiUyMnRpdGxlJTIyJTNBJTIyJUUyJTlDJTg4JUVGJUI4JThGJTIwJUU4JTg4JUFBJUU3JThGJUFEJTIyJTJDJTIyaXRlbXMlMjIlM0ElNUIlN0IlMjJxJTIyJTNBJTIyJUU4JTg4JUFBJUU3JThGJUFEJUU4JUE2JThGJUU1JUFFJTlBJTIyJTJDJTIyYSUyMiUzQSUyMiVFOCVBMSU4QyVFNSU4QiU5NSVFOSU5QiVCQiVFNiVCQSU5MCVFOCVBOCU5OCVFNSVCRSU5NyVFOSU5QSVBOCVFOCVCQSVBQiVFNiU5NCU5QyVFNSVCOCVCNiVFRiVCQyU4QyVFOCVBNiU4MSVFOCVCMiVCQyVFNyVCNSU5NSVFNyVCNyVBMyVFOCU4NiVBMCVFNSVCOCVCNiUyMiU3RCUyQyU3QiUyMnElMjIlM0ElMjIlRTUlQTAlQjElRTUlODglQjAlRTglODglODclRTYlQjMlQTglRTYlODQlOEYlRTQlQkElOEIlRTklQTAlODUlMjIlMkMlMjJhJTIyJTNBJTIyJUUyJTk3JTg2JUU4JUFCJThCJUU2JThGJTkwJUU1JTg5JThEJUU4JTg3JUIzJUU1JUIwJTkxMiVFNSVCMCU4RiVFNiU5OSU4MiVFNiU4QSVCNSVFOSU4MSU5NCVFNiVBOSU5RiVFNSVBMCVCNCVFRiVCQyU4QyVFNiVCQSU5NiVFNSU4MiU5OSVFNSVBNSVCRCVFOCVBRCVCNyVFNyU4NSVBNyVFOCU4OCU4NyVFOSU5QiVCQiVFNSVBRCU5MCVFNiVBOSU5RiVFNyVBNSVBOCVFMyU4MCU4MiU1Q24lRTIlOTclODYlRTUlOEUlQkIlRTclQTglOEIoNyUyRjkpJUU4JUFCJThCJUU2JTk2JUJDMTYlM0EzMCVFNCVCQiVBNSVFNSU4OSU4RCVFNiU4QSVCNSVFOSU4MSU5NCVFNiVBMSU4MyVFNSU5QyU5MiVFNSU5QyU4QiVFOSU5QSU5QiVFNiVBOSU5RiVFNSVBMCVCNCU1Q24lRTIlOTclODYlRTUlOUIlOUUlRTclQTglOEIoNyUyRjEzKSVFOCVBQiU4QiVFNiU5NiVCQzE4JTNBMjAlRTQlQkIlQTUlRTUlODklOEQlRTYlOEElQjUlRTklODElOTQlRTklODIlQTMlRTklOUMlQjglRTYlQTklOUYlRTUlQTAlQjQlMjIlN0QlNUQlN0QlMkMlN0IlMjJ0aXRsZSUyMiUzQSUyMiVGMCU5RiU5QSU5OSVFNyVBNyU5RiVFOCVCQiU4QSUyMiUyQyUyMml0ZW1zJTIyJTNBJTVCJTdCJTIycSUyMiUzQSUyMiVFNSU4RiU5NiVFOCVCQiU4QSUyMiUyQyUyMmElMjIlM0ElMjIlRTQlQjglQkIlRTklQTclOTUlRTklQTclOUIyJUU0JUJEJThEJUU0JUJCJUEzJUU4JUExJUE4JUU5JTlBJUE4JUU3JUE3JTlGJUU4JUJCJThBJUU0JUJBJUJBJUU1JTkzJUExJUU1JTg5JThEJUU1JThFJUJCJUU1JThGJTk2JUU4JUJCJThBJUU1JThEJUIzJUU1JThGJUFGJTIyJTdEJTJDJTdCJTIycSUyMiUzQSUyMiVFOSU4MiU4NCVFOCVCQiU4QSUyMiUyQyUyMmElMjIlM0ElMjIlRTIlOTclODYlRTklODIlODQlRTglQkIlOEElRTUlOUMlQjAlRTklQkIlOUUlRTUlOUMlQThBU0hJQklOQUElMjBPdXRsZXQlRTYlOTclODElRTklODIlOEElRUYlQkMlOEMlRTUlODUlODglRTklODAlOUIlRTUlQUUlOEMlRTUlODYlOEQlRTklODIlODQlRTglQkIlOEElNUNuJUUyJTk3JTg2JUU5JTgyJTg0JUU4JUJCJThBJUU1JUJFJThDJUU2JTkwJUFEJUU2JThFJUE1JUU5JUE3JTgxJUU1JUI3JUI0JUU1JUEzJUFCJUU1JTg4JUIwJUU2JUE5JTlGJUU1JUEwJUI0JTIyJTdEJTJDJTdCJTIycSUyMiUzQSUyMiVFOCVCQiU4QSVFNyVBNiU4RCVFOCU5OSU5NSVFNyU5MCU4NiUyMiUyQyUyMmElMjIlM0ElMjIlRTQlQjglOEQlRTglQUIlOTYlRTUlOUElQjQlRTklODclOEQlRTclQTglOEIlRTUlQkElQTYlRUYlQkMlOEMlRTQlQjglODAlRTUlQUUlOUElRTglQTYlODElRTUlQTAlQjElRTglQUQlQTYlRTclOTUlOTklRTYlQUElOTQlRUYlQkMlOEMlRTUlOUIlOUUlRTUlOUMlOEIlRTYlODklOEQlRTglODMlQkQlRTglQUIlOEIlRTQlQkYlOUQlRTklOUElQUElMjIlN0QlMkMlN0IlMjJxJTIyJTNBJTIyTWFwQ29kZSVFNiU4MCU4RSVFOSVCQSVCQyVFNiU5RiVBNSUyMiUyQyUyMmElMjIlM0ElMjIlRjAlOUYlOTElODklNUIlRTYlOUYlQTUlRTglQTklQTIlRTclQjYlQjIlRTclQUIlOTklNUQoaHR0cHMlM0ElMkYlMkZqYXBhbm1hcGNvZGUuY29tJTJGemgtVFcpJTVDbiVFOCVCQyVCOCVFNSU4NSVBNSVFNSU5QyVCMCVFNSU5MCU4RCVFMyU4MCU4MSVFNSVCQSU5NyVFNSU5MCU4RCVFNiU4OCU5NiVFNSU5QyVCMCVFNSU5RCU4MCVFOSU4MyVCRCVFNSU4RiVBRiVFNCVCQiVBNSVFNiU5RiVBNSVFOCVBOSVBMiUyMiU3RCU1RCU3RCUyQyU3QiUyMnRpdGxlJTIyJTNBJTIyJUYwJTlGJTk3JUJBJUVGJUI4JThGJUU4JUExJThDJUU3JUE4JThCJTIyJTJDJTIyaXRlbXMlMjIlM0ElNUIlN0IlMjJxJTIyJTNBJTIyJUU2JUI1JUFFJUU2JUJEJTlCJUU2JUIzJUE4JUU2JTg0JThGJUU0JUJBJThCJUU5JUEwJTg1JTIyJTJDJTIyYSUyMiUzQSUyMiVFMiU5NyU4NiVFOSU5RCVBMiVFOSU4RiVBMSVFNSU5MSVCQyVFNSU5MCVCOCVFNyVBRSVBMSVFNSU5QyVBOCVFNiU4NCU4RiVFOCVBMSU5QiVFNyU5NCU5RiVFNyU5QSU4NCVFNCVCQSVCQSVFNSU4RiVBRiVFNCVCQiVBNSVFOCU4NyVBQSVFNSVCNyVCMSVFOCVCMiVCNyU1Q24lRTIlOTclODYlRTYlOTclQTklRTklQkIlOUUlRTUlOTAlODMlRTYlOUQlQjElRTglQTUlQkYlRTQlQjglOEQlRTclODQlQjYlRTYlOUMlODMlRTglQTMlQkQlRTklODAlQTAlRTklQUQlOUElRTklQTMlQkMlRTYlOTYlOTklRjAlOUYlOTAlOUYlMjIlN0QlMkMlN0IlMjJxJTIyJTNBJTIyJUU2JTk5JUFGJUU5JUJCJTlFJUU3JUE1JUE4JUU1JTg4JUI4JTIyJTJDJTIyYSUyMiUzQSUyMiVFOSU4MCU5OSVFNiVBQyVBMSVFNyVCNSVCMSVFNCVCOCU4MCVFNSVCOSVBQiVFNSVBNCVBNyVFNSVBRSVCNiVFOCVCMiVCNyoqJTVCS2xvb2slMjBGdW5QYXNzJTVEKGh0dHBzJTNBJTJGJTJGd3d3Lmtsb29rLmNvbSUyRnpoLVRXJTJGYWN0aXZpdHklMkYxNTc3NzUtb2tpbmF3YS1mdW5wYXNzLWNodXJhdW1pLXNlcmllcyUyRikqKiVFRiVCQyU4QyVFNSU4QyU4NSVFNSU5MCVBQiVFNCVCQiVBNSVFNCVCOCU4QjMlRTUlODAlOEIlRTYlOTklQUYlRTklQkIlOUUlRTclOUElODQlRTklOTYlODAlRTclQTUlQTglM0ElNUNuJUUyJTk3JTg2KiolRTclQkUlOEUlRTklQkElOTclRTYlQjUlQjclRTYlQjAlQjQlRTYlOTclOEYlRTklQTQlQTgqKiU1Q24lRTIlOTclODYqKiVFNyU5MCU4OSVFNyU5MCU4MyVFNiU5RCU5MSoqJTVDbiVFMiU5NyU4NioqJUU1JThGJUE0JUU1JUFFJTg3JUU3JUFCJThCJUU2JUI1JUI3JUU2JUI0JThCJUU1JUExJTk0KiolNUNuJTVDbjIlRTYlQUQlQjIlRTUlQjklQkMlRTclQUIlQTUlRTQlQkIlQTUlRTQlQjglOEElRTYlOTklQUYlRTklQkIlOUUlRTclOUElODYlRTUlODUlOEQlRTglQjIlQkIlRUYlQkMlOEMlRTUlOUIlQTAlRTYlQUQlQTQlRTQlQjglOEQlRTklOUMlODAlRTglQjMlQkMlRTglQjIlQjclMjIlN0QlMkMlN0IlMjJxJTIyJTNBJTIyJUU0JUJCJTgwJUU5JUJBJUJDJUU2JTk4JUFGRnVuUGFzcyUyMiUyQyUyMmElMjIlM0ElMjJLbG9vayVFNiU4RSVBOCVFNSU4NyVCQSVFNyU5QSU4NCVFNiU5OSVBRiVFOSVCQiU5RSVFNSVBNSU5NyVFNyVBNSVBOCVFRiVCQyU4QyVFNiU5QyU4OSVFNSVBNCU5QSVFNyVBOCVBRSVFOCVBMSU4QyVFNyVBOCU4QiVFNyVCNSU4NCVFNSU5MCU4OCVFNSU4RiVBRiVFOSU4MSVCOCVFNiU5MyU4NyUyMiU3RCUyQyU3QiUyMnElMjIlM0ElMjIlRTUlOUMlQTglRTUlOTMlQUElRTglQTMlQTElRTklQTAlOThGdW5QYXNzJTIyJTJDJTIyYSUyMiUzQSUyMiVFOCVCMiVCNyVFNyU5QSU4NCVFNiU5OCVBRiVFOSU5QiVCQiVFNSVBRCU5MCVFNyVBNSVBOCVFNSU4OCVCOCVFRiVCQyU4QyVFNyU5NCVBOEFwcCVFNSU4OCU4NiVFOSU4MCU4MSUyMiU3RCU1RCU3RCUyQyU3QiUyMnRpdGxlJTIyJTNBJTIyJUYwJTlGJThGJUE4JTIwJUU0JUJEJThGJUU1JUFFJUJGJTIyJTJDJTIyaXRlbXMlMjIlM0ElNUIlN0IlMjJxJTIyJTNBJTIyJUU5JUEzJUFGJUU1JUJBJTk3JUU4JUIzJTg3JUU4JUE4JThBJTIyJTJDJTIyYSUyMiUzQSUyMiUzRCUzRFkncyUyMElubiUyME5haGElMjBPcm9rdSUyMEVraW1hZSUzRCUzRCU1Q24lRTklOUIlQkIlRTglQTklQjElM0EwOTgtODU5LTcwMjklNUNuJUU1JTlDJUIwJUU1JTlEJTgwJTNBJUUzJTgwJTkyOTAxLTAxNTUlMjAlRTYlQjIlOTYlRTclQjglODQlRTclOUMlOEMlRTklODIlQTMlRTglQTYlODclRTUlQjglODIlRTklODclOTElRTUlOUYlOEUlRUYlQkMlOTUlRTQlQjglODElRTclOUIlQUUlRUYlQkMlOTklNUNuJTVDbiUzRCUzRCVFNiU4OCU4MCVFNCVCOSU4QiVFNiVCMiU5NiVFNyVCOSVBOSUyMCU0MCUyMCVFOSU5NSVCNyVFNiVCNSU5QyUyMCVFNiVCMCU5MSVFNSVBRSVCRihOYXlhbmElMjBIaWxscyklM0QlM0QlNUNuJUU5JTlCJUJCJUU4JUE5JUIxJTNBJTJCODElMjA5MC0zNDk4LTg0ODglNUNuJUU1JTlDJUIwJUU1JTlEJTgwJTNBJUU2JTk3JUE1JUU2JTlDJUFDJUU2JUIyJTk2JUU3JUI5JUE5JUU5JTk1JUI3JUU2JUI1JTlDJUUzJTgwJTkyOTA0LTAzMjQlMjAlRTYlQjIlOTYlRTclQjglODQlRTclOUMlOEMlRTQlQjglQUQlRTklQTAlQUQlRTklODMlQTElRTglQUElQUQlRTglQjAlQjclRTYlOUQlOTElRTklOTUlQjclRTYlQjUlOUMxMTEzLTE0JTJDJTIwT2tpbmF3YSUyMDkwNC0wMzI0JUUzJTgwJTgwJTIyJTdEJTJDJTdCJTIycSUyMiUzQSUyMiVFNSU4NSVBNSVFNCVCRCU4RiVFOCU4OCU4NyVFOSU4MCU4MCVFNiU4OCVCRiVFNiU5OSU4MiVFOSU5NiU5MyUyMiUyQyUyMmElMjIlM0ElMjIlM0QlM0RZJ3MlMjBJbm4lMjBOYWhhJTIwT3Jva3UlMjBFa2ltYWUlM0QlM0QlNUNuJUYwJTlGJTk0JTkxQ2hlY2slMjBpbiUyMCVFNiU5OSU4MiVFOSU5NiU5MyUyMCVFRiVCQyU5QTQlM0EwMCUyMFAuTSUyMCVFNSVCRSU4QyU1Q24lRTIlOEYlQjBDaGVjayUyMG91dCUyMCVFNiU5OSU4MiVFOSU5NiU5MyUyMCVFRiVCQyU5QTEwJTNBMDAlMjBBLk0lMjAlRTUlODklOEQlMjAlNUNuJTVDbiUzRCUzRCVFNiU4OCU4MCVFNCVCOSU4QiVFNiVCMiU5NiVFNyVCOSVBOSUyMCU0MCUyMCVFOSU5NSVCNyVFNiVCNSU5QyUyMCVFNiVCMCU5MSVFNSVBRSVCRihOYXlhbmElMjBIaWxscyklM0QlM0QlNUNuJUYwJTlGJTk0JTkxQ2hlY2slMjBpbiUyMCVFNiU5OSU4MiVFOSU5NiU5MyVFRiVCQyU5QTMlM0EwMCUyMFAuTSUyMCVFNSVCRSU4QyU1Q24lRTIlOEYlQjBDaGVjayUyMG91dCUyMCVFNiU5OSU4MiVFOSU5NiU5MyVFRiVCQyU5QTEwJTNBMDAlMjBBLk0lMjAlRTUlODklOEQlMjAlMjIlN0QlNUQlN0QlMkMlN0IlMjJ0aXRsZSUyMiUzQSUyMiVFMiU5RCU5MyVFNSU4NSVCNiVFNCVCQiU5NiUyMiUyQyUyMml0ZW1zJTIyJTNBJTVCJTdCJTIycSUyMiUzQSUyMiVFNSU4RiU5NyVFNSU4MiVCNyVFOCU5OSU5NSVFNyU5MCU4NiUyMiUyQyUyMmElMjIlM0ElMjIlRTYlODklODAlRTYlOUMlODklRTYlOUQlQjElRTglQTUlQkYlRTklODMlQkQlRTglQTYlODElRTYlOEIlQkYlRTYlOTQlQjYlRTYlOTMlOUElRTMlODAlODElRTYlOEIlOEQlRTclODUlQTclRUYlQkMlOEMlRTQlQkIlQTUlRTQlQkUlQkYlRTYlOUMlQUElRTQlQkUlODYlRTglQUIlOEIlRTQlQkYlOUQlRTklOUElQUElRTclOTQlQTglMjIlN0QlNUQlN0QlNUQ="; 
+    // ===============================
+
+    let currentData = defaultData;
+
+    // 解析配置碼數據
+    if (savedConfig) {
+        try {
+            currentData = JSON.parse(decodeURIComponent(atob(savedConfig)));
+        } catch (e) {
+            console.error("配置碼解析失敗，已還原為預設資料。");
+        }
+    }
+
+    // --- 【🔒 檢查後台硬開關】 ---
+    function checkAdminAccess() {
+        if (isEditable === true) {
+            document.getElementById('admin-toggle').style.display = 'block';
+        }
+    }
+
+    // 💡 升級：全功能精簡版 Markdown 解析器
+    function parseMarkdown(text) {
+        if (!text) return "";
+        
+        let html = text;
+        
+        // 1. 解析行內程式碼 (包裹在反引號 ` 內) -> 轉為 <code>
+        html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
+        
+        // 2. 解析粗體 (包裹在 ** 或 __ 內) -> 轉為 <strong>
+        html = html.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+        html = html.replace(/__([^_]+)__/g, '<strong>$1</strong>');
+        
+        // 3. 解析斜體 (包裹在 * 或 _ 內) -> 轉為 <em>
+        html = html.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+        html = html.replace(/_([^_]+)_/g, '<em>$1</em>');
+        
+        // 4. 解析超連結 [顯示文字](網址) -> 轉為 <a target="_blank">
+        html = html.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank">$1</a>');
+        
+        return html;
+    }
+
+    // --- 1. 渲染用戶閱讀介面 ---
+    function renderUserView() {
+        const view = document.getElementById('user-view');
+        if (currentData.length === 0) {
+            view.innerHTML = '<div style="text-align:center;color:#999;padding:40px;">尚未新增內容，請開啟後台管理模式。</div>';
+            return;
+        }
+        view.innerHTML = currentData.map(sec => `
+            <div class="section-group">
+                <div class="section-title">${sec.title}</div>
+                ${sec.items.map(item => `
+                    <details>
+                        <summary>${item.q}</summary>
+                        <div class="content-box">${parseMarkdown(item.a)}</div>
+                    </details>
+                `).join('')}
+            </div>
+        `).join('');
+    }
+
+    // --- 2. 渲染管理員編輯介面 ---
+    function renderAdminEditor() {
+        const container = document.getElementById('admin-editor-content');
+        container.innerHTML = ''; 
+
+        currentData.forEach((section, sIdx) => {
+            const sectionEl = document.createElement('div');
+            sectionEl.className = 'admin-section';
+            
+            sectionEl.innerHTML = `
+                <div class="admin-section-header">
+                    <button class="btn btn-move" onclick="moveSection(${sIdx}, -1)" ${sIdx === 0 ? 'disabled' : ''}>🔼</button>
+                    <button class="btn btn-move" onclick="moveSection(${sIdx}, 1)" ${sIdx === currentData.length - 1 ? 'disabled' : ''}>🔽</button>
+                    <input type="text" class="editable-title" value="${section.title}" placeholder="請輸入大區塊標題 (例如：✈️ 航班相關)..." onchange="updateSectionTitle(${sIdx}, this.value)">
+                    <button class="btn btn-add" onclick="addSubItem(${sIdx})">➕ 新增子項目</button>
+                    <button class="btn btn-del" onclick="deleteSection(${sIdx})">🗑️ 刪除區塊</button>
+                </div>
+            `;
+
+            if (section.items.length > 0) {
+                const table = document.createElement('table');
+                table.className = 'admin-item-table';
+                table.innerHTML = `<thead><tr><th>子項目標題</th><th>展開內容 (支援 換行、**粗體**、\`灰色底色\`、[連結](網址))</th><th>操作區</th></tr></thead>`;
+                const tbody = document.createElement('tbody');
+
+                section.items.forEach((item, iIdx) => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td><input type="text" class="editable-content" value="${item.q}" placeholder="請輸入子項目標題..." onchange="updateItem(${sIdx}, ${iIdx}, 'q', this.value)"></td>
+                        <td><textarea class="editable-content" rows="4" placeholder="請輸入描述...&#13;&#10;換行：直接按 Enter&#13;&#10;粗體：**重要**&#13;&#10;底色：\`代碼\`&#13;&#10;連結：[地圖](網址)" onchange="updateItem(${sIdx}, ${iIdx}, 'a', this.value)">${item.a}</textarea></td>
+                        <td style="text-align:center; white-space:nowrap; gap:4px;">
+                            <button class="btn btn-move" onclick="moveItem(${sIdx}, ${iIdx}, -1)" ${iIdx === 0 ? 'disabled' : ''}>🔼</button>
+                            <button class="btn btn-move" onclick="moveItem(${sIdx}, ${iIdx}, 1)" ${iIdx === section.items.length - 1 ? 'disabled' : ''}>🔽</button>
+                            <button class="btn btn-del" onclick="deleteItem(${sIdx}, ${iIdx})">× 移除</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+                sectionEl.appendChild(table);
+            } else {
+                sectionEl.innerHTML += `<div style="text-align:center;color:#999;font-size:13px;padding:10px;">此區塊尚無子項目。</div>`;
+            }
+
+            container.appendChild(sectionEl);
+        });
+
+        const addSectionBtn = document.createElement('button');
+        addSectionBtn.className = 'btn btn-add';
+        addSectionBtn.style.cssText = 'width:100%;margin-top:10px;font-size:15px;padding:12px;border-radius:12px;';
+        addSectionBtn.innerHTML = '➕ 新增一個新資料區塊 (例如：🚗 交通安全)';
+        addSectionBtn.onclick = addSection;
+        container.appendChild(addSectionBtn);
+    }
+
+    // --- 3. 數據核心操作函式 ---
+    function updateSectionTitle(sIdx, value) { currentData[sIdx].title = value; }
+    function updateItem(sIdx, iIdx, key, value) { currentData[sIdx].items[iIdx][key] = value; }
+    function addSection() { currentData.push({ title: "", items: [] }); renderAdminEditor(); }
+    
+    function deleteSection(sIdx) { 
+        if(confirm("確定要刪除整份「" + currentData[sIdx].title + "」區塊嗎？")) { 
+            currentData.splice(sIdx, 1); 
+            renderAdminEditor(); 
+        } 
+    }
+    function addSubItem(sIdx) { currentData[sIdx].items.push({ q: "", a: "" }); renderAdminEditor(); }
+    function deleteItem(sIdx, iIdx) { currentData[sIdx].items.splice(iIdx, 1); renderAdminEditor(); }
+
+    function moveSection(index, direction) {
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= currentData.length) return;
+        const temp = currentData[index];
+        currentData[index] = currentData[targetIndex];
+        currentData[targetIndex] = temp;
+        renderAdminEditor(); 
+    }
+
+    function moveItem(sIdx, itemIndex, direction) {
+        const targetIndex = itemIndex + direction;
+        const items = currentData[sIdx].items;
+        if (targetIndex < 0 || targetIndex >= items.length) return;
+        const temp = items[itemIndex];
+        items[itemIndex] = items[targetIndex];
+        items[targetIndex] = temp;
+        renderAdminEditor(); 
+    }
+
+    // --- 4. 後台開啟/關閉 ---
+    function openAdmin() { renderAdminEditor(); document.getElementById('admin-mask').style.display = 'block'; }
+    function closeAdmin() { document.getElementById('admin-mask').style.display = 'none'; }
+
+    // --- 5. 一鍵背景複製 + 自製免彈窗提示功能 ---
+    function saveAndExport() {
+        renderUserView();
+        closeAdmin();
+        
+        const jsonStr = JSON.stringify(currentData);
+        const configCode = btoa(encodeURIComponent(jsonStr));
+        
+        const tempInput = document.createElement("textarea");
+        tempInput.value = configCode;
+        document.body.appendChild(tempInput);
+        
+        tempInput.select();
+        document.execCommand("copy");
+        document.body.removeChild(tempInput); 
+        
+        showToast();
+    }
+
+    function showToast() {
+        let toast = document.getElementById("copy-toast");
+        if (!toast) {
+            toast = document.createElement("div");
+            toast.id = "copy-toast";
+            toast.style.cssText = "position:fixed; top:30px; left:50%; transform:translateX(-50%); background:#E1E8ED; color:#2C3E50; padding:14px 28px; border-radius:12px; font-weight:bold; box-shadow:0 8px 24px rgba(0,0,0,0.08); z-index:2000; transition:all 0.3s; font-size:14px; border: 1px solid #CCD6DD;";
+            document.body.appendChild(toast);
+        }
+        toast.innerHTML = "📋 新配置碼已安全複製到您的剪貼簿！請至原始碼覆蓋 savedConfig 變數。";
+        toast.style.display = "block";
+        toast.style.opacity = "1";
+        
+        setTimeout(() => {
+            toast.style.opacity = "0";
+            setTimeout(() => { toast.style.display = "none"; }, 300);
+        }, 2500);
+    }
+
+    // --- 網頁初始化載入 ---
+    renderUserView();   // 渲染閱讀畫面
+    checkAdminAccess(); // 檢查 Bool 開關狀態
+</script>
+</body>
+</html>
