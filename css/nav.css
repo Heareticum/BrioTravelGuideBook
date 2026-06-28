@@ -225,8 +225,10 @@
     .nav-close {
         display: none;
     }
-    /* 電腦版時，把主內容往左推，避免被側邊欄蓋住 */
-    body.has-side-nav-desktop {
-        padding-right: 260px;
+    /* 電腦版時，主內容自動留出側邊欄空間
+       直接寫在media query裡（不靠JS加class），
+       這樣頁面一開始渲染就有留白，不會等導覽列載入完才突然跳動 */
+    body {
+        padding-right: 260px !important;
     }
 }
