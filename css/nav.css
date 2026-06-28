@@ -7,10 +7,12 @@
     right: 16px;
     width: 44px;
     height: 44px;
-    background: rgba(255, 255, 255, 0.12);
+    /* 改用固定深色底（跟側邊欄、首頁主題色一致），
+       不依賴頁面背景深淺，白底頁面也能保持清楚的對比度 */
+    background: rgba(15, 23, 42, 0.85);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
-    border: 1px solid rgba(255, 255, 255, 0.25);
+    border: 1px solid rgba(255, 255, 255, 0.15);
     border-radius: 50%;
     display: flex;
     flex-direction: column;
@@ -19,12 +21,12 @@
     gap: 4px;
     cursor: pointer;
     z-index: 210;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.25);
     transition: transform 0.2s ease, background 0.3s ease;
 }
 .nav-toggle:active {
     transform: scale(0.92);
-    background: rgba(255, 255, 255, 0.2);
+    background: rgba(15, 23, 42, 0.95);
 }
 .nav-toggle span {
     display: block;
