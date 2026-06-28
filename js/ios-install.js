@@ -1,69 +1,77 @@
-/**
- * iOS 加入主畫面提示
- * 用途：iOS Safari 不支援 beforeinstallprompt，沒辦法跳出原生安裝提示，
- * 所以改用一個提示卡片，引導使用者手動操作「分享 → 加入主畫面」。
- *
- * 使用方式：在每個頁面的 </body> 前引入：
- * <link rel="stylesheet" href="css/ios-install.css">（放在head）
- * <script src="js/ios-install.js"></script>
- */
-(function () {
-    const DISMISS_KEY = 'okinawa-ios-install-dismissed';
+/* ==========================================
+   📱 iOS 加入主畫面提示卡片
+   ========================================== */
+.ios-install-banner {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    bottom: 18px;
+    z-index: 9000;
+    background: rgba(255, 255, 255, 0.12);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 16px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
 
-    // 判斷是不是 iOS 裝置（iPhone / iPad / iPod）
-    function isIOS() {
-        return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    /* 固定深色底，理由跟漢堡按鈕一樣：
+       不管疊在首頁深色背景還是其他頁面的白底上，都要維持一致對比度 */
+    background-color: #0f172a;
+
+    animation: iosBannerSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes iosBannerSlideUp {
+    from { transform: translateY(20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.ios-install-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.12);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    font-size: 1.1rem;
+}
+
+.ios-install-text {
+    font-size: 0.85rem;
+    color: #ffffff;
+    line-height: 1.5;
+    padding-right: 14px;
+}
+.ios-install-text .ios-install-sub {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.78rem;
+}
+
+.ios-install-close {
+    position: absolute;
+    top: 8px;
+    right: 10px;
+    background: none;
+    border: none;
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 0.9rem;
+    cursor: pointer;
+    padding: 4px 6px;
+    line-height: 1;
+}
+.ios-install-close:active {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* 電腦版用不到這個提示（iOS加入主畫面是行動裝置情境），保險起見隱藏 */
+@media (min-width: 992px) {
+    .ios-install-banner {
+        display: none;
     }
-
-    // 判斷是不是用「支援加入主畫面」的iOS瀏覽器開啟
-    // iOS上的Chrome/Firefox/Edge底層都還是用WebKit(蘋果規定)，
-    // 點分享按鈕叫出來的也是同一個iOS系統分享選單，一樣有「加入主畫面」選項，
-    // 所以不需要排除，只需要排除LINE這種「內建瀏覽器」，
-    // 因為LINE內建瀏覽器是封閉環境，分享選單往往沒有「加入主畫面」這個選項
-    function isSupportedBrowser() {
-        const ua = navigator.userAgent;
-        return !/Line/.test(ua);
-    }
-
-    // 判斷是不是已經是「加入主畫面後啟動」的狀態（已安裝就不用再提示）
-    function isStandalone() {
-        return window.navigator.standalone === true ||
-               window.matchMedia('(display-mode: standalone)').matches;
-    }
-
-    // 判斷使用者之前有沒有按過關閉
-    function isDismissed() {
-        return localStorage.getItem(DISMISS_KEY) === 'true';
-    }
-
-    function shouldShowBanner() {
-        return isIOS() && isSupportedBrowser() && !isStandalone() && !isDismissed();
-    }
-
-    function createBanner() {
-        const banner = document.createElement('div');
-        banner.className = 'ios-install-banner';
-        banner.id = 'iosInstallBanner';
-        banner.innerHTML = `
-            <button class="ios-install-close" id="iosInstallClose" aria-label="關閉提示">✕</button>
-            <div class="ios-install-icon">📲</div>
-            <div class="ios-install-text">
-                將手冊加入主畫面，離線也能隨時查看<br>
-                <span class="ios-install-sub">點擊瀏覽器的分享圖示 → 加入主畫面</span>
-            </div>
-        `;
-        document.body.appendChild(banner);
-
-        document.getElementById('iosInstallClose').addEventListener('click', () => {
-            localStorage.setItem(DISMISS_KEY, 'true');
-            banner.remove();
-        });
-    }
-
-    if (shouldShowBanner()) {
-        // 延遲一點再顯示，避免使用者剛進頁面就被提示打擾
-        window.addEventListener('load', () => {
-            setTimeout(createBanner, 1500);
-        });
-    }
-})();
+}
