@@ -52,30 +52,27 @@
 
         /* 👤 左上角「我是誰」本地暫存區塊 */
         .user-identity-block {
+            position: relative;
             display: flex;
             align-items: center;
-            gap: 6px;
-            font-size: 12px;
-            color: var(--text-muted);
+            gap: 8px;
             margin-bottom: 15px;
             background: #F0F3F5;
             padding: 6px 12px;
             border-radius: 20px;
             width: fit-content;
         }
-
-        .user-identity-block select {
-            background: transparent;
-            border: none;
-            padding: 0 4px;
-            font-size: 12px;
-            font-weight: bold;
-            color: var(--accent-color);
-            cursor: pointer;
-            width: auto;
+        .identity-avatar {
+            width: 22px; height: 22px; border-radius: 50%;
+            background: var(--accent-color); color: #fff;
+            display: flex; align-items: center; justify-content: center;
+            font-weight: bold; font-size: 11px; flex-shrink: 0;
         }
-        .user-identity-block select:focus {
-            outline: none;
+        .identity-greeting { font-size: 12px; font-weight: bold; color: var(--text-main); margin: 0; }
+        .identity-chevron { font-size: 12px; color: var(--text-muted); margin-left: -2px; }
+        .user-identity-block select {
+            position: absolute; inset: 0; width: 100%; height: 100%;
+            opacity: 0; border: none; cursor: pointer; -webkit-appearance: none; appearance: none;
         }
 
         h2 {
@@ -102,25 +99,47 @@
             font-weight: bold;
         }
 
+        .action-btn-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
         .btn-trigger-add {
-            width: 100%;
-            padding: 14px;
+            flex: 1;
+            padding: 14px 8px;
             background-color: var(--accent-color);
             color: white;
             border: none;
             border-radius: 12px;
-            font-size: 16px;
+            font-size: 15px;
             cursor: pointer;
             font-weight: bold;
             transition: all 0.2s;
             box-shadow: 0 4px 12px rgba(0, 118, 163, 0.2);
-            margin-bottom: 20px;
             display: flex;
             justify-content: center;
             align-items: center;
-            gap: 8px;
+            gap: 6px;
         }
         .btn-trigger-add:hover { background-color: #005f85; }
+
+        .btn-trigger-payment {
+            flex: 1;
+            padding: 14px 8px;
+            background-color: var(--card-background);
+            color: var(--accent-color);
+            border: 1px solid var(--accent-color);
+            border-radius: 12px;
+            font-size: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-trigger-payment:hover { background-color: #E6F3FA; }
 
         /* 📥 彈窗核心基礎樣式 */
         .modal-overlay {
@@ -128,7 +147,7 @@
             top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0, 0, 0, 0.4);
             display: flex; justify-content: center; align-items: center;
-            z-index: 1000; padding: 20px; box-sizing: border-box;
+            z-index: 8000; padding: 20px; box-sizing: border-box;
         }
 
         .modal-content {
@@ -208,16 +227,125 @@
         }
         .hidden { display: none !important; }
 
+        /* 💸 還款紀錄歷史摺疊區塊 */
+        .history-toggle-container { margin-top: 20px; text-align: center; }
+        .btn-history-toggle {
+            background-color: #FFFFFF; border: 1px solid var(--border-color); padding: 10px 16px;
+            border-radius: 30px; font-size: 13px; color: var(--text-main); cursor: pointer;
+            font-weight: bold; width: 100%; display: flex; justify-content: center; align-items: center; gap: 6px;
+            transition: background 0.2s;
+        }
+        .btn-history-toggle:hover { background-color: #F5F7F8; }
+        .payment-history-item {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px; background: #F8FAFB; border: 1px solid var(--border-color);
+            border-radius: 12px; font-size: 13px;
+        }
+        .payment-history-names { color: var(--text-main); font-weight: bold; }
+        .payment-history-date { color: var(--text-muted); font-size: 11px; margin-top: 2px; }
+        .payment-history-amount { color: var(--accent-color); font-weight: bold; font-size: 14px; }
+        .payment-history-remark { color: var(--text-muted); font-size: 11px; font-style: italic; margin-top: 3px; }
+
+        /* 💸 還款紀錄彈窗 */
+        .payment-amount-input-wrapper {
+            position: relative;
+        }
+        .payment-amount-input-wrapper input {
+            border-color: var(--accent-color);
+            font-size: 16px;
+            font-weight: bold;
+            padding-right: 60px; /* 為貨幣單位標籤留空間 */
+        }
+        .payment-amount-input-wrapper input:focus {
+            border-color: var(--accent-color);
+        }
+        .payment-amount-currency-label {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 13px;
+            font-weight: bold;
+            color: var(--text-muted);
+            pointer-events: none;
+        }
+        .payment-amount-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin: 4px 0 0;
+        }
+        .payment-amount-error {
+            font-size: 12px;
+            color: var(--danger-color);
+            margin: 4px 0 0;
+            display: none;
+        }
+        /* 即時計算提示卡片 */
+        .payment-impact-card {
+            background: #F0F7FB;
+            border: 1px solid #BEE3F8;
+            border-radius: 10px;
+            padding: 10px 14px;
+            font-size: 13px;
+            color: var(--primary-color);
+            line-height: 1.6;
+            margin-bottom: 4px;
+        }
+        .payment-impact-card .impact-after {
+            font-weight: bold;
+            color: var(--accent-color);
+        }
+        /* 彈窗底部雙按鈕列 */
+        .modal-btn-row {
+            display: flex;
+            gap: 10px;
+            margin-top: 16px;
+        }
+        .btn-modal-cancel {
+            flex: 1; padding: 12px;
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            background: var(--card-background);
+            color: var(--text-main);
+            font-size: 15px; font-weight: bold; cursor: pointer;
+        }
+        .btn-modal-confirm {
+            flex: 1; padding: 12px;
+            border-radius: 12px;
+            border: none;
+            background: var(--accent-color);
+            color: #FFFFFF;
+            font-size: 15px; font-weight: bold; cursor: pointer;
+            box-shadow: 0 4px 12px rgba(0, 118, 163, 0.2);
+        }
+        .btn-modal-confirm:disabled {
+            background: #B0BEC5;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
         /* 分帳指引卡片 */
         .transfer-grid-container { display: flex; flex-direction: column; gap: 10px; margin-bottom: 25px; }
         .transfer-route-card {
             background: var(--card-background); border: 1px solid var(--border-color); border-radius: 12px;
-            padding: 14px 16px; display: flex; justify-content: space-between; align-items: center;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02); box-sizing: border-box; border-left: 4px solid var(--accent-color); 
+            padding: 14px 16px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.02); box-sizing: border-box; border-left: 4px solid var(--accent-color);
+            display: flex; justify-content: space-between; align-items: center; gap: 12px;
         }
-        .transfer-flow-names { font-size: 14px; color: var(--text-main); display: flex; align-items: center; gap: 8px; }
+        .transfer-flow-names {
+            font-size: 14px; color: var(--text-main); display: flex; align-items: center; gap: 8px;
+            min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
         .transfer-arrow-icon { color: var(--text-muted); font-size: 12px; letter-spacing: -1px; }
-        .transfer-card-amount { font-size: 15px; font-weight: 800; color: var(--primary-color); }
+        .transfer-card-right-group { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+        .transfer-card-amount { font-size: 15px; font-weight: 800; color: var(--primary-color); white-space: nowrap; }
+        .transfer-card-amount .currency-tag { font-size: 12px; font-weight: normal; color: var(--text-muted); margin-right: 3px; }
+        .btn-quick-settle {
+            background: none; border: 1px solid var(--accent-color); color: var(--accent-color);
+            padding: 5px 14px; border-radius: 8px; font-size: 12px; font-weight: bold; cursor: pointer;
+            white-space: nowrap;
+        }
+        .btn-quick-settle:hover { background-color: #E6F3FA; }
         .transfer-empty-card { background: var(--card-background); border: 1px dashed var(--success-color); border-radius: 12px; padding: 20px; text-align: center; color: var(--success-color); font-weight: bold; font-size: 14px; }
 
         /* 流水帳明細卡片 */
@@ -235,43 +363,8 @@
         
         .btn-action { background: none; padding: 4px 8px; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; text-align: center; white-space: nowrap; }
         .btn-edit-item { color: var(--warning-color); border: 1px solid #FDEBD0; }
-        .btn-settle-item { color: var(--success-color); border: 1px solid #D4EDDA; }
-        .btn-unsettle-item { color: var(--text-muted); border: 1px solid var(--border-color); }
-
-        /* 🗑️ 右上角懸浮邊角刪除按鈕 */
-        .btn-delete-absolute {
-            position: absolute;
-            top: -8px;
-            right: -8px;
-            width: 26px;
-            height: 26px;
-            border-radius: 50%;
-            background: var(--card-background);
-            border: 1px solid var(--border-color);
-            color: var(--danger-color);
-            font-size: 13px;
-            cursor: pointer;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
-            z-index: 10;
-            padding: 0;
-            line-height: 1;
-            transition: all 0.2s;
-        }
-        .btn-delete-absolute:hover {
-            background-color: #FADBD8;
-            transform: scale(1.1);
-        }
-
-        /* 🆕 結清樣式優化 */
-        .expense-list-item.settled { opacity: 0.55; background-color: #F8F9FA; border-style: dashed; }
-        .expense-item-name.settled { text-decoration: line-through; color: var(--text-muted); }
-        .settled-badge { display: inline-block; background-color: #E6F4EA; color: #137333; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: bold; margin-left: 6px; vertical-align: middle; line-height: 1; text-decoration: none !important; }
-        .history-toggle-container { margin-top: 20px; text-align: center; }
-        .btn-history-toggle { background: none; border: 1px solid var(--border-color); padding: 10px 16px; border-radius: 30px; font-size: 13px; color: var(--text-main); cursor: pointer; font-weight: bold; width: 100%; display: flex; justify-content: center; align-items: center; gap: 6px; background-color: #FFFFFF; transition: background 0.2s; }
-        .btn-history-toggle:hover { background-color: #F5F7F8; }
+        .btn-delete-item { color: var(--danger-color); border: 1px solid #FADBD8; }
+        .btn-delete-payment { color: var(--danger-color); border: 1px solid #FADBD8; flex-shrink: 0; }
 
         /* 🗑️ 自訂刪除確認彈窗 */
         #deleteConfirmModal .modal-content {
@@ -300,7 +393,9 @@
 <div class="container">
     
     <div class="user-identity-block">
-        <span>👤 我是：</span>
+        <div class="identity-avatar" id="identityAvatar">?</div>
+        <p class="identity-greeting" id="identityGreeting">請選擇你的身分</p>
+        <span class="identity-chevron">⌄</span>
         <select id="myIdentitySelect">
             <option value="">[ 請選擇 ]</option>
         </select>
@@ -309,9 +404,12 @@
     <h2>🛫 分帳儀表板</h2>
     <p style="text-align:center; font-size:13px; color:var(--text-muted); margin-top:-18px; margin-bottom:22px;">💴 日幣換算匯率：1 JPY ≈ 0.20 TWD</p>
 
-    <button id="btnOpenAddModal" class="btn-trigger-add">➕ 新增消費紀錄</button>
+    <div class="action-btn-row">
+        <button id="btnOpenAddModal" class="btn-trigger-add">➕ 新增消費紀錄</button>
+        <button id="btnOpenPaymentModal" class="btn-trigger-payment">💸 新增還款紀錄</button>
+    </div>
 
-    <h3>💰 精簡優化分帳指引（皆換算為 TWD 結算）</h3>
+    <h3>💰 精簡分帳指引（皆換算為 TWD 結算）</h3>
     <div id="transferReport" class="transfer-grid-container">
         <p style="color: var(--text-muted); font-size:14px; text-align:center;">計算中...</p>
     </div>
@@ -327,6 +425,15 @@
 
     <div id="expenseList" class="expense-list-container">
         <p style="color: var(--text-muted); font-size:14px; text-align:center;">載入中...</p>
+    </div>
+
+    <div class="history-toggle-container">
+        <button class="btn-history-toggle" id="btnTogglePaymentHistory">
+            💸 查看還款紀錄 (0 筆) ▼
+        </button>
+    </div>
+    <div id="paymentHistoryList" class="expense-list-container hidden" style="margin-top:12px;">
+        <p style="color: var(--text-muted); font-size:14px; text-align:center;">尚無還款紀錄。</p>
     </div>
 </div>
 
@@ -347,7 +454,8 @@
                 <button type="button" class="pill-btn active" id="btnCurrencyTwd">台幣 (TWD $)</button>
                 <button type="button" class="pill-btn" id="btnCurrencyJpy">日圓 (JPY ￥)</button>
             </div>
-            <input type="number" id="amountInput" placeholder="請輸入金額 (TWD $)" inputmode="numeric">
+            <input type="text" id="amountInput" placeholder="請輸入金額 (TWD $)" inputmode="numeric" autocomplete="off">
+            <p class="payment-amount-error" id="expenseAmountError">⚠️ 請輸入有效的正整數金額</p>
         </div>
         <div class="form-group">
             <label for="payerSelect">💳 誰付的錢？</label>
@@ -363,7 +471,64 @@
             </div>
             <div class="tag-cloud-container" id="splitCheckboxes"></div>
         </div>
-        <button id="btnSubmitExpense" class="btn-main">確認送出並同步雲端</button>
+        <button id="btnSubmitExpense" class="btn-main">確認送出</button>
+    </div>
+</div>
+
+<!-- 💸 新增還款紀錄彈窗 -->
+<div id="paymentModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h4 class="modal-title">💸 新增還款紀錄</h4>
+            <button class="modal-close" id="btnClosePaymentModal">✕</button>
+        </div>
+
+        <div class="form-group">
+            <label for="paymentFromSelect">還款人</label>
+            <select id="paymentFromSelect"></select>
+        </div>
+
+        <div class="form-group">
+            <label for="paymentToSelect">收款人</label>
+            <select id="paymentToSelect"></select>
+            <p style="font-size:12px; color:var(--text-muted); margin:4px 0 0;">收款人已自動排除還款人</p>
+        </div>
+
+        <div class="form-group">
+            <label style="margin-bottom: 8px;">💴 還款幣別</label>
+            <div class="pill-toggle-container full-width">
+                <button type="button" class="pill-btn active" id="btnPaymentCurrencyTwd">台幣 (TWD $)</button>
+                <button type="button" class="pill-btn" id="btnPaymentCurrencyJpy">日圓 (JPY ￥)</button>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <label>金額</label>
+            <div class="payment-amount-input-wrapper">
+                <input type="text"
+                       id="paymentAmountInput"
+                       placeholder="請輸入金額"
+                       inputmode="decimal"
+                       autocomplete="off">
+                <span class="payment-amount-currency-label" id="paymentAmountCurrencyLabel">TWD</span>
+            </div>
+            <p class="payment-amount-hint" id="paymentAmountHint">已依分帳指引帶入建議金額，可手動調整</p>
+            <p class="payment-amount-error" id="paymentAmountError">⚠️ 請輸入有效的正數金額</p>
+        </div>
+
+        <div class="form-group">
+            <label for="paymentMemoInput">備註 <span style="color:var(--text-muted); font-weight:normal;">（選填）</span></label>
+            <input type="text" id="paymentMemoInput" placeholder="例如：現金當面給、LINE Pay轉帳" maxlength="50">
+        </div>
+
+        <div class="payment-impact-card" id="paymentImpactCard">
+            <!-- 由 JS 動態填入即時計算結果 -->
+        </div>
+
+        <div class="modal-btn-row">
+            <button class="btn-modal-cancel" id="btnCancelPayment">取消</button>
+            <button class="btn-modal-confirm" id="btnConfirmPayment">儲存</button>
+        </div>
     </div>
 </div>
 
@@ -374,7 +539,7 @@
             <button class="modal-close" id="btnCloseFilterModal">✕</button>
         </div>
         <p style="font-size: 13px; color: var(--text-muted); margin-top: 0; margin-bottom: 15px;">
-            可同時勾選多位成員，系統將呈現在場有參與或代墊的所有交叉帳目。
+            可同時勾選多位成員，系統將列出有參與或代墊的所有帳目。
         </p>
         
         <div class="tag-cloud-container" id="filterMembersCloud">
@@ -418,11 +583,19 @@
     const members = ["Ob", "和叡", "阿玲", "柏瑋", "雅筑", "阿丁", "家瑗", "興倫", "思綺", "薯餅"];
     let groupId = "okinawa_2026"; 
     let selectedCurrency = "TWD"; 
+    let selectedPaymentCurrency = "TWD";
     let cacheAllExpenses = []; 
-    let currentSelectedFilters = []; 
-    let isHistoryExpanded = false; // 🆕 記憶歷史摺疊展開狀態
+    let currentSelectedFilters = [];
+    let cacheBalances = {}; // 快取最新一次計算的淨餘額，供還款彈窗即時預覽使用
 
     const JPY_TO_TWD_RATE = 0.20;
+
+    // 幣別設定表：往後要加新貨幣，只要在這裡加一筆設定，不用改驗證/格式化邏輯本身
+    // decimals: 該幣別實際能拿出來的最小單位可到幾位小數（TWD/JPY皆無角分單位，故為0）
+    const CURRENCY_CONFIG = {
+        TWD: { symbol: "NT$", decimals: 0 },
+        JPY: { symbol: "JPY￥", decimals: 0 }
+    };
 
     // DOM 節點
     const expenseModal = document.getElementById('expenseModal');
@@ -468,6 +641,19 @@
         }
     };
 
+    // 依選擇的身分更新頭像縮寫與問候語（未來若接入使用者系統，這裡可改成讀真實大頭貼/暱稱）
+    function updateIdentityDisplay(name) {
+        const avatar = document.getElementById('identityAvatar');
+        const greeting = document.getElementById('identityGreeting');
+        if (name) {
+            avatar.textContent = name.charAt(0);
+            greeting.textContent = `${name}`;
+        } else {
+            avatar.textContent = '?';
+            greeting.textContent = '請選擇身分';
+        }
+    }
+
     function initUI() {
         const urlParams = new URLSearchParams(window.location.search);
         const urlGroupId = urlParams.get('groupId');
@@ -487,11 +673,13 @@
         if (savedIdentity && members.includes(savedIdentity)) {
             myIdentitySelect.value = savedIdentity;
         }
+        updateIdentityDisplay(myIdentitySelect.value);
 
         myIdentitySelect.addEventListener('change', (e) => {
             const val = e.target.value;
             if (val) SafeStorage.setItem('okinawa_my_identity', val);
             else SafeStorage.removeItem('okinawa_my_identity');
+            updateIdentityDisplay(val);
         });
 
         const checkboxGroup = document.getElementById('splitCheckboxes');
@@ -532,7 +720,7 @@
             currentSelectedFilters = selected;
 
             if (currentSelectedFilters.length > 0) {
-                btnTriggerFilterModal.textContent = `🔍 已篩：${currentSelectedFilters.length} 人`;
+                btnTriggerFilterModal.textContent = `🔍 已篩選：${currentSelectedFilters.length} 人`;
                 btnTriggerFilterModal.classList.add('active');
                 btnClearFilter.classList.remove('hidden');
             } else {
@@ -556,11 +744,11 @@
         startListeningSettlement();
     }
 
-    btnOpenAddModal.addEventListener('click', () => {
-        modalTitle.textContent = "🛍️ 新增消費紀錄";
+    btnOpenAddModal.addEventListener('click', () => {        modalTitle.textContent = "🛍️ 新增消費紀錄";
         editingDocId.value = "";
         document.getElementById('itemInput').value = "";
         document.getElementById('amountInput').value = "";
+        document.getElementById('expenseAmountError').style.display = 'none';
         
         const localUser = SafeStorage.getItem('okinawa_my_identity');
         if (localUser && members.includes(localUser)) { payerSelect.value = localUser; } 
@@ -574,18 +762,263 @@
 
     btnCloseModal.addEventListener('click', () => expenseModal.classList.add('hidden'));
 
+    // ==========================================
+    // 💸 還款紀錄彈窗邏輯
+    // ==========================================
+
+    // 格式化千分位顯示用（純顯示，不用於計算）。小數位數依CURRENCY_CONFIG決定，未指定幣別時預設用還款Modal目前選擇的幣別
+    function formatAmountDisplay(val, currency = selectedPaymentCurrency) {
+        const raw = val.replace(/,/g, '');
+        const num = parseFloat(raw);
+        if (isNaN(num)) return val;
+        const maxDecimals = CURRENCY_CONFIG[currency].decimals;
+        return num.toLocaleString('zh-TW', { maximumFractionDigits: maxDecimals });
+    }
+
+    // 驗證金額：正數，且不得超過該幣別允許的小數位數
+    function isValidAmount(val, currency = selectedPaymentCurrency) {
+        const raw = val.replace(/,/g, '');
+        const decimals = CURRENCY_CONFIG[currency].decimals;
+        const pattern = decimals > 0
+            ? new RegExp(`^\\d+(\\.\\d{1,${decimals}})?$`)
+            : /^\d+$/;
+        return pattern.test(raw) && parseFloat(raw) > 0;
+    }
+
+    // 取得目前兩人之間的淨欠款（從 cacheBalances 計算）
+    // 正數代表 from 欠 to 這個金額，負數代表反向
+    function getNetOwed(fromName, toName) {
+        if (!cacheBalances) return 0;
+        // from 的淨餘額為負代表他是欠款人，to 的淨餘額為正代表他是應收人
+        // 這裡直接回傳「from 對 to 的欠款」的近似值
+        const fromBal = cacheBalances[fromName] || 0;
+        const toBal = cacheBalances[toName] || 0;
+        // 簡化：若 from 是負、to 是正，代表存在欠款關係
+        if (fromBal < 0 && toBal > 0) {
+            return Math.min(Math.abs(fromBal), toBal);
+        }
+        return 0;
+    }
+
+    // 更新即時計算提示卡片
+    function updatePaymentImpactCard() {
+        const impactCard = document.getElementById('paymentImpactCard');
+        const fromName = document.getElementById('paymentFromSelect').value;
+        const toName = document.getElementById('paymentToSelect').value;
+        const rawInput = document.getElementById('paymentAmountInput').value.replace(/,/g, '');
+        const payAmount = parseFloat(rawInput);
+
+        if (!fromName || !toName || isNaN(payAmount) || payAmount <= 0) {
+            impactCard.innerHTML = `<span style="color:var(--text-muted); font-size:13px;">請填寫還款人、收款人與金額，系統將即時預覽影響。</span>`;
+            return;
+        }
+
+        // 若以日圓輸入，換算成 NT$ 等值後再與淨欠款比較
+        const payAmountInTwd = selectedPaymentCurrency === "JPY" ? payAmount * JPY_TO_TWD_RATE : payAmount;
+
+        // 用 cacheBalances 計算目前淨欠款
+        const currentOwed = getNetOwed(fromName, toName);
+        const afterAmountRaw = Math.max(0, currentOwed - payAmountInTwd);
+        const afterAmountRounded = Math.round(afterAmountRaw);
+        const formattedBefore = Math.round(currentOwed).toLocaleString('zh-TW');
+        const formattedAfter = afterAmountRounded.toLocaleString('zh-TW');
+
+        // 未滿NT$1的零頭不會產生新的分帳指引卡片，但仍會保留在餘額計算中，於此低調提示一下
+        const residueNote = (afterAmountRaw > 0.01 && afterAmountRounded < 1)
+            ? `<div style="font-size:11px; color:var(--text-muted); margin-top:4px;">尾差 NT$${afterAmountRaw.toFixed(1)} 將保留在紀錄中，之後結算會自動計入。</div>`
+            : '';
+
+        if (currentOwed <= 0) {
+            impactCard.innerHTML = `📊 目前 <b>${fromName}</b> 對 <b>${toName}</b> 尚無欠款。`;
+        } else if (afterAmountRounded < 1) {
+            impactCard.innerHTML = `📊 儲存後，<b>${fromName}</b> 對 <b>${toName}</b> 的欠款將從 NT$${formattedBefore} 變為 <span class="impact-after">NT$0（結清）</span>${residueNote}`;
+        } else {
+            impactCard.innerHTML = `📊 儲存後，<b>${fromName}</b> 對 <b>${toName}</b> 的欠款將從 NT$${formattedBefore} 變為 <span class="impact-after">NT$${formattedAfter}</span>`;
+        }
+    }
+
+    // 開啟還款彈窗（可帶入預設值，從分帳指引按鈕觸發時使用）
+    function openPaymentModal({ defaultFrom = '', defaultTo = '', defaultAmount = '' } = {}) {
+        const fromSelect = document.getElementById('paymentFromSelect');
+        const toSelect = document.getElementById('paymentToSelect');
+        const amountInput = document.getElementById('paymentAmountInput');
+        const errorMsg = document.getElementById('paymentAmountError');
+        const impactCard = document.getElementById('paymentImpactCard');
+
+        // 還款人下拉：列出所有成員
+        fromSelect.innerHTML = '';
+        members.forEach(m => {
+            const opt = document.createElement('option');
+            opt.value = m; opt.textContent = m;
+            fromSelect.appendChild(opt);
+        });
+
+        // 預設還款人：帶入參數 > 我是誰 > 第一位
+        const savedIdentity = SafeStorage.getItem('okinawa_my_identity');
+        if (defaultFrom && members.includes(defaultFrom)) fromSelect.value = defaultFrom;
+        else if (savedIdentity && members.includes(savedIdentity)) fromSelect.value = savedIdentity;
+
+        // 更新收款人選單（排除還款人）
+        function refreshToSelect(keepValue) {
+            const currentFrom = fromSelect.value;
+            toSelect.innerHTML = '';
+            members.filter(m => m !== currentFrom).forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m; opt.textContent = m;
+                toSelect.appendChild(opt);
+            });
+            if (keepValue && members.includes(keepValue) && keepValue !== currentFrom) {
+                toSelect.value = keepValue;
+            }
+        }
+
+        refreshToSelect(defaultTo);
+
+        // 還款人切換時，重新整理收款人清單
+        fromSelect.addEventListener('change', () => {
+            refreshToSelect('');
+            updatePaymentImpactCard();
+        });
+
+        // 重設為預設幣別 TWD（分帳指引建議金額固定以 NT$ 計算）
+        setPaymentCurrency("TWD");
+
+        // 帶入預設金額
+        amountInput.value = defaultAmount ? formatAmountDisplay(String(defaultAmount)) : '';
+        errorMsg.style.display = 'none';
+        document.getElementById('paymentMemoInput').value = '';
+
+        // 即時計算
+        updatePaymentImpactCard();
+
+        // 收款人切換時更新即時計算
+        toSelect.addEventListener('change', updatePaymentImpactCard);
+
+        // 金額輸入：格式化 + 驗證 + 即時計算（是否允許小數點依CURRENCY_CONFIG決定）
+        amountInput.addEventListener('input', () => {
+            let raw = amountInput.value.replace(/,/g, '');
+            const allowDecimal = CURRENCY_CONFIG[selectedPaymentCurrency].decimals > 0;
+            raw = allowDecimal
+                ? raw.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1')
+                : raw.replace(/[^\d]/g, '');
+            amountInput.value = raw;
+
+            if (amountInput.value === '' || isValidAmount(amountInput.value)) {
+                errorMsg.style.display = 'none';
+            }
+            updatePaymentImpactCard();
+        });
+
+        document.getElementById('paymentModal').classList.remove('hidden');
+    }
+
+    function closePaymentModal() {
+        document.getElementById('paymentModal').classList.add('hidden');
+        // 移除動態綁定的事件，避免重複堆疊
+        const fromSelect = document.getElementById('paymentFromSelect');
+        const toSelect = document.getElementById('paymentToSelect');
+        const amountInput = document.getElementById('paymentAmountInput');
+        fromSelect.replaceWith(fromSelect.cloneNode(true));
+        toSelect.replaceWith(toSelect.cloneNode(true));
+        amountInput.replaceWith(amountInput.cloneNode(true));
+    }
+
+    document.getElementById('btnClosePaymentModal').addEventListener('click', closePaymentModal);
+    document.getElementById('btnCancelPayment').addEventListener('click', closePaymentModal);
+
+    // 切換還款幣別：TWD 允許小數、JPY 僅允許整數，並更新提示文字與金額欄位標籤
+    function setPaymentCurrency(curr) {
+        selectedPaymentCurrency = curr;
+        const btnTwd = document.getElementById('btnPaymentCurrencyTwd');
+        const btnJpy = document.getElementById('btnPaymentCurrencyJpy');
+        const currencyLabel = document.getElementById('paymentAmountCurrencyLabel');
+        const hint = document.getElementById('paymentAmountHint');
+        const amountInput = document.getElementById('paymentAmountInput');
+
+        if (curr === "TWD") {
+            btnTwd.classList.add('active'); btnJpy.classList.remove('active');
+            currencyLabel.textContent = "TWD";
+            hint.textContent = "";
+        } else {
+            btnTwd.classList.remove('active'); btnJpy.classList.add('active');
+            currencyLabel.textContent = "JPY";
+            hint.textContent = "";
+        }
+        if (amountInput.value) amountInput.value = formatAmountDisplay(amountInput.value);
+        updatePaymentImpactCard();
+    }
+    document.getElementById('btnPaymentCurrencyTwd').addEventListener('click', () => setPaymentCurrency("TWD"));
+    document.getElementById('btnPaymentCurrencyJpy').addEventListener('click', () => setPaymentCurrency("JPY"));
+
+    // 儲存還款紀錄（階段3會接上Firestore，這裡先做驗證與提示）
+    document.getElementById('btnConfirmPayment').addEventListener('click', async () => {
+        const fromName = document.getElementById('paymentFromSelect').value;
+        const toName = document.getElementById('paymentToSelect').value;
+        const rawAmount = document.getElementById('paymentAmountInput').value.replace(/,/g, '');
+        const errorMsg = document.getElementById('paymentAmountError');
+
+        if (!isValidAmount(rawAmount)) {
+            errorMsg.style.display = 'block';
+            return;
+        }
+        errorMsg.style.display = 'none';
+
+        const amount = CURRENCY_CONFIG[selectedPaymentCurrency].decimals > 0 ? parseFloat(rawAmount) : parseInt(rawAmount, 10);
+        const memo = document.getElementById('paymentMemoInput').value.trim();
+        const confirmBtn = document.getElementById('btnConfirmPayment');
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = '儲存中...';
+
+        try {
+            await addDoc(collection(db, "groups", groupId, "payments"), {
+                from: fromName,
+                to: toName,
+                amount: amount,
+                currency: selectedPaymentCurrency,
+                memo: memo,
+                createdAt: Math.floor(Date.now() / 1000),
+                deleted: false
+            });
+            closePaymentModal();
+        } catch (err) {
+            console.error('還款紀錄儲存失敗：', err);
+            alert('儲存失敗，請檢查網路連線後重試。');
+        } finally {
+            confirmBtn.disabled = false;
+            confirmBtn.textContent = '儲存';
+        }
+    });
+
     function setCurrency(curr) {
         selectedCurrency = curr;
+        const input = document.getElementById('amountInput');
         if (curr === "TWD") {
             btnCurrencyTwd.classList.add('active'); btnCurrencyJpy.classList.remove('active');
-            document.getElementById('amountInput').placeholder = "請輸入金額 (TWD $)";
+            input.placeholder = "請輸入金額 (TWD $)";
         } else {
             btnCurrencyJpy.classList.add('active'); btnCurrencyTwd.classList.remove('active');
-            document.getElementById('amountInput').placeholder = "請輸入金額 (JPY ￥)";
+            input.placeholder = "請輸入金額 (JPY ￥)";
         }
+        if (input.value) input.value = formatAmountDisplay(input.value, curr);
+        document.getElementById('expenseAmountError').style.display = 'none';
     }
     btnCurrencyTwd.addEventListener('click', () => setCurrency("TWD"));
     btnCurrencyJpy.addEventListener('click', () => setCurrency("JPY"));
+
+    // 消費金額輸入：格式化 + 驗證（是否允許小數點依CURRENCY_CONFIG決定，目前TWD/JPY皆僅整數）
+    const expenseAmountInput = document.getElementById('amountInput');
+    const expenseAmountError = document.getElementById('expenseAmountError');
+    expenseAmountInput.addEventListener('input', () => {
+        let raw = expenseAmountInput.value.replace(/,/g, '');
+        const allowDecimal = CURRENCY_CONFIG[selectedCurrency].decimals > 0;
+        raw = allowDecimal
+            ? raw.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1')
+            : raw.replace(/[^\d]/g, '');
+        expenseAmountInput.value = raw;
+        if (expenseAmountInput.value === '' || isValidAmount(expenseAmountInput.value, selectedCurrency)) {
+            expenseAmountError.style.display = 'none';
+        }
+    });
     btnSelectAll.addEventListener('click', () => {
         btnSelectAll.classList.add('active'); btnSelectNone.classList.remove('active');
         document.querySelectorAll('#splitCheckboxes input').forEach(cb => cb.checked = true);
@@ -597,13 +1030,19 @@
 
     btnSubmitExpense.addEventListener('click', async () => {
         const item = document.getElementById('itemInput').value.trim();
-        const amount = parseFloat(document.getElementById('amountInput').value);
+        const rawAmount = document.getElementById('amountInput').value.replace(/,/g, '');
         const payer = payerSelect.value;
         const docId = editingDocId.value;
         const splitWith = [];
         document.querySelectorAll('#splitCheckboxes input:checked').forEach(cb => splitWith.push(cb.value));
 
-        if (!item || isNaN(amount) || amount <= 0) { alert("請填寫項目與金額！"); return; }
+        if (!item) { alert("請填寫項目！"); return; }
+        if (!isValidAmount(rawAmount, selectedCurrency)) {
+            document.getElementById('expenseAmountError').style.display = 'block';
+            return;
+        }
+        document.getElementById('expenseAmountError').style.display = 'none';
+        const amount = CURRENCY_CONFIG[selectedCurrency].decimals > 0 ? parseFloat(rawAmount) : parseInt(rawAmount, 10);
         if (splitWith.length === 0) { alert("請至少選擇一位平分對象！"); return; }
 
         btnSubmitExpense.disabled = true;
@@ -621,7 +1060,6 @@
                 delete expenseData.createdAt;
                 await updateDoc(docRef, expenseData);
             } else {
-                expenseData.settled = false; // 🆕 新增時預設為未結清
                 await addDoc(collection(db, "groups", groupId, "expenses"), expenseData);
             }
             expenseModal.classList.add('hidden');
@@ -629,14 +1067,58 @@
             console.error(error); alert("同步失敗。");
         } finally {
             btnSubmitExpense.disabled = false;
-            btnSubmitExpense.textContent = "確認送出並同步雲端";
+            btnSubmitExpense.textContent = "確認送出";
         }
+    });
+
+    // 開啟還款紀錄彈窗（手動觸發，不帶預設值）
+    document.getElementById('btnOpenPaymentModal').addEventListener('click', () => {
+        openPaymentModal();
     });
 
     function formatMoney(num) { return num.toLocaleString('zh-TW', { maximumFractionDigits: 1 }); }
 
+    // 簡易HTML escape，避免使用者自由輸入的備註文字造成HTML注入
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // 共用刪除確認彈窗邏輯（消費紀錄／還款紀錄共用同一個 modal）
+    function requestDeleteConfirm(message, onConfirmAsync) {
+        const modal = document.getElementById('deleteConfirmModal');
+        document.getElementById('deleteConfirmMsg').innerHTML = message;
+        modal.classList.remove('hidden');
+
+        const btnConfirm = document.getElementById('btnConfirmDelete');
+        const btnCancel = document.getElementById('btnCancelDelete');
+
+        const close = () => {
+            modal.classList.add('hidden');
+            btnConfirm.replaceWith(btnConfirm.cloneNode(true));
+            btnCancel.replaceWith(btnCancel.cloneNode(true));
+        };
+
+        document.getElementById('btnCancelDelete').addEventListener('click', close, { once: true });
+        document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
+            close();
+            await onConfirmAsync();
+        }, { once: true });
+    }
+
     let unsubscribeExpenses = null;
+    let unsubscribePayments = null;
     let retryTimer = null;
+    let latestExpensesSnapshot = null;
+    let latestPaymentsSnapshot = null;
+
+    function tryRenderIfReady() {
+        // 兩邊監聽都至少回來過一次資料才開始計算，避免payments還沒到就先少算一次
+        if (latestExpensesSnapshot) {
+            calculateAndRenderSettlement(latestExpensesSnapshot, latestPaymentsSnapshot);
+        }
+    }
 
     function startListeningSettlement(isSilentRetry) {
         const transferReport = document.getElementById('transferReport');
@@ -645,14 +1127,26 @@
         }
 
         if (unsubscribeExpenses) unsubscribeExpenses(); 
+        if (unsubscribePayments) unsubscribePayments();
         if (retryTimer) { clearTimeout(retryTimer); retryTimer = null; }
 
-        const q = query(collection(db, "groups", groupId, "expenses"), where("deleted", "==", false));
-        unsubscribeExpenses = onSnapshot(q, (querySnapshot) => {
-            calculateAndRenderSettlement(querySnapshot);
+        const expensesQuery = query(collection(db, "groups", groupId, "expenses"), where("deleted", "==", false));
+        unsubscribeExpenses = onSnapshot(expensesQuery, (querySnapshot) => {
+            latestExpensesSnapshot = querySnapshot;
+            tryRenderIfReady();
         }, (error) => {
-            console.error("Firestore 監聽中斷，將自動重試：", error);
+            console.error("Firestore 監聽中斷（expenses），將自動重試：", error);
             unsubscribeExpenses = null;
+            retryTimer = setTimeout(() => startListeningSettlement(true), 3000);
+        });
+
+        const paymentsQuery = collection(db, "groups", groupId, "payments");
+        unsubscribePayments = onSnapshot(paymentsQuery, (querySnapshot) => {
+            latestPaymentsSnapshot = querySnapshot;
+            tryRenderIfReady();
+        }, (error) => {
+            console.error("Firestore 監聽中斷（payments），將自動重試：", error);
+            unsubscribePayments = null;
             retryTimer = setTimeout(() => startListeningSettlement(true), 3000);
         });
     }
@@ -662,19 +1156,20 @@
     });
     window.addEventListener('online', () => startListeningSettlement(true));
 
-    function calculateAndRenderSettlement(querySnapshot) {
+    // 計算淨額並渲染分帳指引（同時整合 expenses 與 payments 兩組資料）
+    // expensesSnapshot 為必填，paymentsSnapshot 可為 null（初次監聽 expenses 尚未拿到 payments 時）
+    let cacheAllPayments = []; // 快取最新一次的還款紀錄，供歷史列表渲染與淨額計算使用
+
+    function calculateAndRenderSettlement(expensesSnapshot, paymentsSnapshot) {
         const transferReport = document.getElementById('transferReport');
         try {
             cacheAllExpenses = [];
             const balances = {};
             members.forEach(m => balances[m] = 0);
 
-            querySnapshot.forEach(docSnap => {
+            expensesSnapshot.forEach(docSnap => {
                 const exp = docSnap.data();
                 cacheAllExpenses.push({ id: docSnap.id, ...exp });
-
-                // 🆕 核心改動：如果該項目已結清，則不列入上方指引金額計算
-                if (exp.settled === true) return;
 
                 let amountInTwd = exp.amount;
                 if (exp.currency === "JPY") amountInTwd = exp.amount * JPY_TO_TWD_RATE;
@@ -684,7 +1179,23 @@
                 exp.splitWith.forEach(s => { if (balances[s] !== undefined) balances[s] -= perShare; });
             });
 
+            // 🆕 整合還款紀錄：還款人淨欠款減少（balances增加），收款人應收減少（balances減少）
+            cacheAllPayments = [];
+            if (paymentsSnapshot) {
+                paymentsSnapshot.forEach(docSnap => {
+                    const p = docSnap.data();
+                    if (p.deleted === true) return;
+                    cacheAllPayments.push({ id: docSnap.id, ...p });
+                    let paidInTwd = p.amount;
+                    if ((p.currency || "TWD") === "JPY") paidInTwd = p.amount * JPY_TO_TWD_RATE;
+                    if (balances[p.from] !== undefined) balances[p.from] += paidInTwd;
+                    if (balances[p.to] !== undefined) balances[p.to] -= paidInTwd;
+                });
+            }
+
             const creditors = [], debtors = [];
+            // 快取最新淨餘額，供還款彈窗即時計算使用
+            cacheBalances = { ...balances };
             for (let m in balances) {
                 let b = Math.round(balances[m] * 100) / 100;
                 if (b > 0.01) creditors.push({ name: m, amount: b });
@@ -697,13 +1208,17 @@
                 let amt = Math.min(c.amount, d.amount);
                 amt = Math.round(amt * 100) / 100;
 
-                if (amt > 0) {
+                if (amt >= 1) {
+                    const suggestedAmt = Math.round(amt);
                     reportHTML += `
-                        <div class="transfer-route-card">
-                            <div class="transfer-flow-names">
+                        <div class="transfer-route-card" data-from="${d.name}" data-to="${c.name}" data-amount="${suggestedAmt}">
+                            <div class="transfer-flow-names" title="${d.name} → ${c.name}">
                                 <b>${d.name}</b> <span class="transfer-arrow-icon">────></span> <b>${c.name}</b>
                             </div>
-                            <span class="transfer-card-amount">NT$ ${formatMoney(amt)}</span>
+                            <div class="transfer-card-right-group">
+                                <span class="transfer-card-amount"><span class="currency-tag">NT$</span>${formatMoney(suggestedAmt)}</span>
+                                <button class="btn-quick-settle" data-from="${d.name}" data-to="${c.name}" data-amount="${suggestedAmt}">結清</button>
+                            </div>
                         </div>`;
                 }
                 c.amount -= amt; d.amount -= amt;
@@ -711,47 +1226,123 @@
                 if (d.amount <= 0.01) d_idx++;
             }
             transferReport.innerHTML = reportHTML || `<div class="transfer-empty-card">🎉 目前帳目全部平衡！</div>`;
+
+            // 綁定每張指引卡片的快速結清按鈕（階段4功能，先在這裡準備好掛勾）
+            document.querySelectorAll('.btn-quick-settle').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    const { from, to, amount } = e.currentTarget.dataset;
+                    openPaymentModal({ defaultFrom: from, defaultTo: to, defaultAmount: amount });
+                });
+            });
+
             cacheAllExpenses.sort((a,b) => b.createdAt - a.createdAt);
             renderExpenseList();
+            renderPaymentHistory();
         } catch (error) {
             console.error(error);
             transferReport.innerHTML = "<p style='color:red; text-align:center;'>無法載入雲端資料。</p>";
         }
     }
 
-    // 🆕 支援複選篩選 + 摺疊分區歷史紀錄的渲染核心
+    let isPaymentHistoryExpanded = false;
+
+    // 渲染還款紀錄歷史列表
+    function renderPaymentHistory() {
+        const listContainer = document.getElementById('paymentHistoryList');
+        const toggleBtn = document.getElementById('btnTogglePaymentHistory');
+
+        toggleBtn.innerHTML = `💸 ${isPaymentHistoryExpanded ? '收合' : '查看'}還款紀錄 (${cacheAllPayments.length} 筆) ${isPaymentHistoryExpanded ? '▲' : '▼'}`;
+
+        if (!isPaymentHistoryExpanded) {
+            listContainer.classList.add('hidden');
+            return;
+        }
+        listContainer.classList.remove('hidden');
+        listContainer.innerHTML = '';
+
+        if (cacheAllPayments.length === 0) {
+            listContainer.innerHTML = `<p style="color: var(--text-muted); font-size:14px; text-align:center;">尚無還款紀錄。</p>`;
+            return;
+        }
+
+        const sorted = [...cacheAllPayments].sort((a, b) => b.createdAt - a.createdAt);
+        sorted.forEach(p => {
+            const dateStr = new Date(p.createdAt * 1000).toLocaleString('zh-TW', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' });
+            const curSign = CURRENCY_CONFIG[p.currency || "TWD"].symbol;
+            const twdConversionMemo = ((p.currency || "TWD") === "JPY")
+                ? `<div class="payment-history-date">約 NT$ ${formatMoney(p.amount * JPY_TO_TWD_RATE)}</div>`
+                : "";
+            const remarkRow = p.memo
+                ? `<div class="payment-history-remark">💬 ${escapeHtml(p.memo)}</div>`
+                : "";
+            const div = document.createElement('div');
+            div.className = 'payment-history-item';
+            div.innerHTML = `
+                <div>
+                    <div class="payment-history-names">${p.from} ──> ${p.to}</div>
+                    <div class="payment-history-date">${dateStr}</div>
+                    ${remarkRow}
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div style="text-align:right;">
+                        <div class="payment-history-amount">${curSign} ${formatMoney(p.amount)}</div>
+                        ${twdConversionMemo}
+                    </div>
+                    <button class="btn-action btn-delete-payment" data-id="${p.id}">刪除</button>
+                </div>
+            `;
+            listContainer.appendChild(div);
+        });
+
+        // 還款紀錄刪除綁定（軟刪除：標記 deleted，避免誤刪無法復原）
+        document.querySelectorAll('.btn-delete-payment').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const docId = e.currentTarget.dataset.id;
+                const targetData = cacheAllPayments.find(x => x.id === docId);
+                if (!targetData) return;
+                const curSign = CURRENCY_CONFIG[targetData.currency || "TWD"].symbol;
+
+                requestDeleteConfirm(
+                    `是否確認刪除這筆還款紀錄：<strong>${targetData.from} → ${targetData.to}</strong>（${curSign} ${formatMoney(targetData.amount)}）？`,
+                    async () => {
+                        const docRef = doc(db, "groups", groupId, "payments", docId);
+                        await updateDoc(docRef, { deleted: true });
+                    }
+                );
+            });
+        });
+    }
+
+    document.getElementById('btnTogglePaymentHistory').addEventListener('click', () => {
+        isPaymentHistoryExpanded = !isPaymentHistoryExpanded;
+        renderPaymentHistory();
+    });
+
+    // 渲染流水帳明細（移除結清分類，統一渲染所有項目）
     function renderExpenseList() {
         const expenseList = document.getElementById('expenseList');
         expenseList.innerHTML = "";
 
-        // 1. 先做團員篩選聯集過濾
+        // 團員篩選
         const filteredData = cacheAllExpenses.filter(exp => {
             if (currentSelectedFilters.length === 0) return true;
             return currentSelectedFilters.includes(exp.payer) || 
                    exp.splitWith.some(person => currentSelectedFilters.includes(person));
         });
 
-        // 2. 將過濾後的資料切分為「未結清」與「已結清」
-        const activeExpenses = filteredData.filter(exp => !exp.settled);
-        const settledExpenses = filteredData.filter(exp => exp.settled);
-
-        // 3. 渲染「未結清」明細
-        if (activeExpenses.length === 0) {
+        if (filteredData.length === 0) {
             const p = document.createElement('p');
             p.style.cssText = "color: var(--text-muted); text-align:center; padding: 20px 0; font-size: 14px;";
-            p.textContent = "沒有未結清的帳目明細。";
+            p.textContent = "目前沒有帳目明細。";
             expenseList.appendChild(p);
         } else {
-            activeExpenses.forEach(exp => {
+            filteredData.forEach(exp => {
                 const itemDiv = document.createElement('div');
-                itemDiv.className = "expense-list-item"; 
-                const curSign = (exp.currency === "JPY") ? "JPY ￥" : "TWD $";
+                itemDiv.className = "expense-list-item";
+                const curSign = CURRENCY_CONFIG[exp.currency || "TWD"].symbol;
                 let twdMemoRow = (exp.currency === "JPY") ? `<span class="expense-twd-inline-memo">(約 NT$ ${formatMoney(exp.amount * JPY_TO_TWD_RATE)})</span>` : "";
 
-                // 將 🗑️ 垃圾桶按鈕獨立放到 itemDiv 第一層，供 absolute 定位
-                // 並將編輯/結清順序互換
                 itemDiv.innerHTML = `
-                    <button class="btn-action btn-delete-absolute" data-id="${exp.id}" title="刪除">🗑️</button>
                     <div class="expense-info-left">
                         <div class="expense-title-row">
                             <span class="expense-item-name">${exp.item}</span>
@@ -764,79 +1355,11 @@
                     </div>
                     <div class="expense-actions">
                         <button class="btn-action btn-edit-item" data-id="${exp.id}">編輯</button>
-                        <button class="btn-action btn-settle-item" data-id="${exp.id}">結清</button>
+                        <button class="btn-action btn-delete-item" data-id="${exp.id}">刪除</button>
                     </div>`;
                 expenseList.appendChild(itemDiv);
             });
         }
-
-        // 4. 渲染「已結清歷史紀錄」摺疊區塊
-        if (settledExpenses.length > 0) {
-            const toggleContainer = document.createElement('div');
-            toggleContainer.className = "history-toggle-container";
-            toggleContainer.innerHTML = `
-                <button class="btn-history-toggle" id="btnToggleHistory">
-                    📁 ${isHistoryExpanded ? '收合' : '查看'}已結清歷史紀錄 (${settledExpenses.length} 筆) ${isHistoryExpanded ? '▲' : '▼'}
-                </button>
-            `;
-            expenseList.appendChild(toggleContainer);
-
-            const settledContainer = document.createElement('div');
-            settledContainer.className = `expense-list-container ${isHistoryExpanded ? '' : 'hidden'}`;
-            settledContainer.style.marginTop = "12px";
-
-            settledExpenses.forEach(exp => {
-                const itemDiv = document.createElement('div');
-                itemDiv.className = "expense-list-item settled";
-                const curSign = (exp.currency === "JPY") ? "JPY ￥" : "TWD $";
-                let twdMemoRow = (exp.currency === "JPY") ? `<span class="expense-twd-inline-memo">(約 NT$ ${formatMoney(exp.amount * JPY_TO_TWD_RATE)})</span>` : "";
-
-                itemDiv.innerHTML = `
-                    <div class="expense-info-left">
-                        <div class="expense-title-row">
-                            <span class="expense-item-name settled">${exp.item}<span class="settled-badge">已結清</span></span>
-                            <div class="expense-amount-block">
-                                <span class="expense-item-amount" style="color: var(--text-muted);">${curSign} ${formatMoney(exp.amount)}</span>
-                                ${twdMemoRow}
-                            </div>
-                        </div>
-                        <span class="expense-sub-details">👤 付款人：${exp.payer} <br> 👥 分攤人員：${exp.splitWith.join(', ')}</span>
-                    </div>
-                    <div class="expense-actions">
-                        <button class="btn-action btn-unsettle-item" data-id="${exp.id}">回復未結清</button>
-                    </div>`;
-                settledContainer.appendChild(itemDiv);
-            });
-            expenseList.appendChild(settledContainer);
-
-            // 綁定歷史摺疊切換事件
-            document.getElementById('btnToggleHistory').addEventListener('click', () => {
-                isHistoryExpanded = !isHistoryExpanded;
-                renderExpenseList();
-            });
-        }
-
-        // 5. 事件處理綁定（結清、回復、編輯、刪除）
-        
-        // 🆕 點擊結清
-        document.querySelectorAll('.btn-settle-item').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const docId = e.target.dataset.id;
-                e.target.disabled = true; e.target.textContent = "...";
-                const docRef = doc(db, "groups", groupId, "expenses", docId);
-                await updateDoc(docRef, { settled: true });
-            });
-        });
-
-        // 🆕 回復未結清
-        document.querySelectorAll('.btn-unsettle-item').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                const docId = e.target.dataset.id;
-                e.target.disabled = true; e.target.textContent = "...";
-                const docRef = doc(db, "groups", groupId, "expenses", docId);
-                await updateDoc(docRef, { settled: false });
-            });
-        });
 
         // 編輯綁定
         document.querySelectorAll('.btn-edit-item').forEach(btn => {
@@ -856,33 +1379,17 @@
         });
 
         // 刪除綁定
-        document.querySelectorAll('.btn-delete-absolute').forEach(btn => {
+        document.querySelectorAll('.btn-delete-item').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const docId = e.target.dataset.id;
                 const targetData = cacheAllExpenses.find(x => x.id === docId);
                 if (!targetData) return;
                 const itemName = targetData.item;
 
-                const modal = document.getElementById('deleteConfirmModal');
-                document.getElementById('deleteConfirmMsg').innerHTML = `是否確認刪除「<strong>${itemName}</strong>」？`;
-                modal.classList.remove('hidden');
-
-                const btnConfirm = document.getElementById('btnConfirmDelete');
-                const btnCancel = document.getElementById('btnCancelDelete');
-
-                const close = () => {
-                    modal.classList.add('hidden');
-                    btnConfirm.replaceWith(btnConfirm.cloneNode(true));
-                    btnCancel.replaceWith(btnCancel.cloneNode(true));
-                };
-
-                document.getElementById('btnCancelDelete').addEventListener('click', close, { once: true });
-                document.getElementById('btnConfirmDelete').addEventListener('click', async () => {
-                    close();
-                    e.target.disabled = true; e.target.textContent = "請稍候...";
+                requestDeleteConfirm(`是否確認刪除「<strong>${itemName}</strong>」？`, async () => {
                     const docRef = doc(db, "groups", groupId, "expenses", docId);
                     await updateDoc(docRef, { deleted: true });
-                }, { once: true });
+                });
             });
         });
     }

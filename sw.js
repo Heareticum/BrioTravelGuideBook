@@ -1,6 +1,6 @@
 // 每次更新網站內容時，記得把版本號改掉（v1 -> v2...），
 // 否則使用者裝置上的舊快取不會更新。
-const CACHE_NAME = 'okinawa-travel-book-v10';
+const CACHE_NAME = 'okinawa-travel-book-v11';
 
 // 注意：這裡用「相對路徑」而不是「/開頭的絕對路徑」，
 // 這樣不管網站部署在 GitHub Pages 的根目錄還是子路徑（例如 /repo-name/）都能正常運作。
@@ -52,6 +52,14 @@ self.addEventListener('activate', (event) => {
 // 2. 其他資源 (CSS/JS/圖片)：優先用快取，沒有才連網抓
 self.addEventListener('fetch', (event) => {
     const request = event.request;
+
+    // 🔒 非GET請求例外（例如 Firestore 的新增/修改/刪除資料，底層是 POST/PUT/PATCH）：
+    // 瀏覽器的 Cache API 規格上只支援快取 GET 請求，
+    // 如果讓這些請求繼續往下跑，cache.put() 會直接拋出錯誤（Failed to execute 'put' on 'Cache'）。
+    // 這裡直接放行，不攔截、不快取，讓瀏覽器用預設行為處理。
+    if (request.method !== 'GET') {
+        return;
+    }
 
     // 🌤️ 天氣API例外：天氣資料每小時都在變，不適合被快取邏輯處理
     // （Cache First策略下，第一次抓到的天氣會被永久快取，使用者之後看到的都會是舊資料）
