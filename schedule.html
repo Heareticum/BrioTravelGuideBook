@@ -4,13 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>行程表</title>
-
-    <!-- 🔧 PWA 設定 -->
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#0f172a">
-    <link rel="stylesheet" href="css/nav.css">
-    <link rel="stylesheet" href="css/ios-install.css">
-
     <style>
         /* ===================================================
            🎨 全域色彩變數設定區（包含雙色與軸線規範）
@@ -163,12 +156,22 @@
             margin-top: 4px;      /* 與上方景點名稱微微拉開 */
             line-height: 1.4;
         }
+
+        /* 🚫 已取消項目：加在 .itinerary-item 上即可整列變灰＋刪除線 */
+        .itinerary-item.cancelled .item-activity,
+        .itinerary-item.cancelled .item-time {
+            text-decoration: line-through;
+            color: #B0B0B0;
+        }
+        .itinerary-item.cancelled .item-time::after {
+            background-color: #D0D0D0; /* 時光軸圓點也一併變灰 */
+        }
+        .itinerary-item.cancelled .item-note {
+            color: #C2A99A; /* 注意事項也同步淡化 */
+        }
     </style>
 </head>
 <body>
-
-<!-- 🍔 側邊導覽列插入點（由 js/nav.js 動態載入內容） -->
-<div id="nav-placeholder"></div>
 
 <div class="itinerary-container">
 
@@ -180,7 +183,7 @@
                 <div class="item-time">16:30 - 18:30</div>
                 <div class="item-activity">
                     桃園國際機場
-                    <div class="item-note">⚠️ 最晚16:30要到機場</div>
+                    <div class="item-note">⚠️ 最晚15:00要到機場</div>
                 </div>
             </div>
             <div class="itinerary-item">
@@ -195,7 +198,7 @@
     </div>
 
     <div class="day-card card-shop">
-        <h2 class="day-header">📅 7/10 (五) ｜ 市區購物 ｜ 🌸花襯衫</h2>
+        <h2 class="day-header">📅 7/10 (五) ｜ 購物避難</h2>
         
         <div class="card-content">
             <div class="itinerary-item">
@@ -203,33 +206,73 @@
                 <div class="itinerary-activity item-activity">Y's Inn Naha Oroku Ekimae</div>
             </div>
             <div class="itinerary-item">
-                <div class="item-time">10:00 - 11:00</div>
+                <div class="item-time">10:00 - 10:30</div>
                 <div class="item-activity">飯店門口取車</div>
             </div>
             <div class="itinerary-item">
+                <div class="item-time">11:40 - 13:00</div>
+                <div class="item-activity">MEGA唐吉訶德宜野灣店</div>
+            </div>
+            <div class="itinerary-item cancelled">
                 <div class="item-time">11:30 - 14:00</div>
                 <div class="item-activity">國際通(午餐)</div>
             </div>
-            <div class="itinerary-item">
+            <div class="itinerary-item cancelled">
                 <div class="item-time">14:30 - 16:00</div>
                 <div class="item-activity">波上宮</div>
             </div>
             
-            <div class="itinerary-item">
+            <div class="itinerary-item cancelled">
                 <div class="item-time">16:50 - 20:00</div>
                 <div class="item-activity">
                     Birthday港川店<br>San-A Urasoe West Coast PARCO CITY
                 </div>
             </div>
             <div class="itinerary-item">
-                <div class="item-time">21:30 - </div>
-                <div class="item-activity">民宿休息(戀之沖繩 @ 長浜 民宿)</div>
+                <div class="item-time">13:40 - </div>
+                <div class="item-activity">民宿放行李休息(戀之沖繩 @ 長浜 民宿)</div>
             </div>
         </div>
     </div>
 
     <div class="day-card card-blue">
-        <h2 class="day-header">📅 7/11 (六) ｜ 浮潛</h2>
+        <h2 class="day-header">📅 7/11 (六) ｜ 水族館 ｜ 🌊藍白配</h2>
+        
+        <div class="card-content">
+            <div class="itinerary-item">
+                <div class="item-time"><span style="visibility: hidden;">00:00</span> - 10:00</div>
+                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">10:00 - 14:00</div>
+                <div class="item-activity">
+                    美麗海水族館
+                    <div class="item-note">⚠️ Klook FunPass行程</div>
+                </div>
+            </div>
+            <div class="itinerary-item cancelled">
+                <div class="item-time">15:00 - 16:30</div>
+                <div class="item-activity">
+                    古宇利橋
+                    <div class="item-note">⚠️ 古宇利海洋塔為Klook FunPass行程</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">19:00 - 21:00</div>
+                <div class="item-activity">
+                    燒肉本部牧場 本部總店
+                    <div class="item-note">⚠️ 已訂位19:00晚餐</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time">22:30 - </div>
+                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
+            </div>
+        </div>
+    </div>
+
+    <div class="day-card card-blue">
+        <h2 class="day-header">📅 7/12 (日) ｜ 浮潛 ｜ 🌸花襯衫</h2>
         
         <div class="card-content">
             <div class="itinerary-item">
@@ -244,10 +287,24 @@
                 </div>
             </div>
             <div class="itinerary-item">
+                <div class="item-time"><span style="visibility: hidden;">00:00 - 00:00</span></div>
+                <div class="item-activity">
+                    永旺夢樂城沖繩來客夢
+                    <div class="item-note">⚠️ 臨時調動</div>
+                </div>
+            </div>
+            <div class="itinerary-item">
+                <div class="item-time"><span style="visibility: hidden;">00:00 - 00:00</span></div>
+                <div class="item-activity">
+                    BANTA CAFE
+                    <div class="item-note">⚠️ 臨時調動</div>
+                </div>
+            </div>
+            <div class="itinerary-item cancelled">
                 <div class="item-time">12:30 - 17:30</div>
                 <div class="item-activity">青之洞窟(浮潛)</div>
             </div>
-            <div class="itinerary-item">
+            <div class="itinerary-item cancelled">
                 <div class="item-time">17:30 - 19:30</div>
                 <div class="item-activity">
                     島豬與琉球牛 燦別邸
@@ -256,42 +313,6 @@
             </div>
             <div class="itinerary-item">
                 <div class="item-time">20:30 - </div>
-                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
-            </div>
-        </div>
-    </div>
-
-    <div class="day-card card-blue">
-        <h2 class="day-header">📅 7/12 (日) ｜ 水族館 ｜ 🌊藍白配</h2>
-        
-        <div class="card-content">
-            <div class="itinerary-item">
-                <div class="item-time"><span style="visibility: hidden;">00:00</span> - 10:00</div>
-                <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
-            </div>
-            <div class="itinerary-item">
-                <div class="item-time">10:00 - 14:00</div>
-                <div class="item-activity">
-                    美麗海水族館
-                    <div class="item-note">⚠️ Klook FunPass行程</div>
-                </div>
-            </div>
-            <div class="itinerary-item">
-                <div class="item-time">15:00 - 16:30</div>
-                <div class="item-activity">
-                    古宇利橋
-                    <div class="item-note">⚠️ 古宇利海洋塔為Klook FunPass行程</div>
-                </div>
-            </div>
-            <div class="itinerary-item">
-                <div class="item-time">17:30 - 19:30</div>
-                <div class="item-activity">
-                    燒肉本部牧場 本部總店
-                    <div class="item-note">⚠️ 已訂位17:30晚餐</div>
-                </div>
-            </div>
-            <div class="itinerary-item">
-                <div class="item-time">21:00 - </div>
                 <div class="item-activity">戀之沖繩 @ 長浜 民宿</div>
             </div>
         </div>
@@ -324,21 +345,6 @@
     </div>
 
 </div>
-
-<!-- 🍔 載入側邊導覽列邏輯 -->
-<script src="js/nav.js"></script>
-<script src="js/ios-install.js"></script>
-
-<!-- 🔧 註冊 Service Worker（支援離線與安裝） -->
-<script>
-    if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('sw.js')
-                .then((reg) => console.log('Service Worker 註冊成功：', reg.scope))
-                .catch((err) => console.error('Service Worker 註冊失敗：', err));
-        });
-    }
-</script>
 
 </body>
 </html>
