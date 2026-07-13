@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>行程表</title>
+
+    <!-- 🔧 PWA 設定 -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="stylesheet" href="css/nav.css">
+    <link rel="stylesheet" href="css/ios-install.css">
+
     <style>
         /* ===================================================
            🎨 全域色彩變數設定區（包含雙色與軸線規範）
@@ -172,6 +179,9 @@
     </style>
 </head>
 <body>
+
+<!-- 🍔 側邊導覽列插入點（由 js/nav.js 動態載入內容） -->
+<div id="nav-placeholder"></div>
 
 <div class="itinerary-container">
 
@@ -345,6 +355,21 @@
     </div>
 
 </div>
+
+<!-- 🍔 載入側邊導覽列邏輯 -->
+<script src="js/nav.js"></script>
+<script src="js/ios-install.js"></script>
+
+<!-- 🔧 註冊 Service Worker（支援離線與安裝） -->
+<script>
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('sw.js')
+                .then((reg) => console.log('Service Worker 註冊成功：', reg.scope))
+                .catch((err) => console.error('Service Worker 註冊失敗：', err));
+        });
+    }
+</script>
 
 </body>
 </html>
