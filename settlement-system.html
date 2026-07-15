@@ -141,6 +141,25 @@
         }
         .btn-trigger-payment:hover { background-color: #E6F3FA; }
 
+        .btn-trigger-personal {
+            width: 100%;
+            padding: 12px 8px;
+            background-color: #F0F3F5;
+            color: var(--text-main);
+            border: none;
+            border-radius: 12px;
+            font-size: 14px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 20px;
+        }
+        .btn-trigger-personal:hover { background-color: #E4E8EB; }
+
         /* 📥 彈窗核心基礎樣式 */
         .modal-overlay {
             position: fixed;
@@ -409,6 +428,8 @@
         <button id="btnOpenPaymentModal" class="btn-trigger-payment">💸 新增還款紀錄</button>
     </div>
 
+    <button id="btnOpenPersonalModal" class="btn-trigger-personal">📊 查看個人花費</button>
+
     <h3>💰 精簡分帳指引（皆換算為 TWD 結算）</h3>
     <div id="transferReport" class="transfer-grid-container">
         <p style="color: var(--text-muted); font-size:14px; text-align:center;">計算中...</p>
@@ -549,6 +570,33 @@
     </div>
 </div>
 
+<!-- 📊 個人花費總覽彈窗 -->
+<div id="personalExpenseModal" class="modal-overlay hidden">
+    <div class="modal-content">
+        <div class="modal-header">
+            <h4 class="modal-title">📊 個人花費總覽</h4>
+            <button class="modal-close" id="btnClosePersonalModal">✕</button>
+        </div>
+
+        <div class="user-identity-block" id="panelIdentityBlock">
+            <div class="identity-avatar" id="panelIdentityAvatar">?</div>
+            <p class="identity-greeting" id="panelIdentityGreeting">請選擇身分</p>
+            <span class="identity-chevron">⌄</span>
+            <select id="panelIdentitySelect">
+                <option value="">[ 請選擇 ]</option>
+            </select>
+        </div>
+
+        <div id="personalExpenseContent">
+            <p id="personalEmptyState" style="color: var(--text-muted); text-align:center; padding: 20px 0; font-size: 14px;">請先選擇身分</p>
+            <div id="personalSummaryCard" class="hidden" style="background:#F0F3F5; border-radius:12px; padding:14px 16px; margin-bottom:16px;"></div>
+            <div id="personalExpenseList" class="expense-list-container">
+                <!-- 由 JS 動態填入個人花費項目清單（Step 4） -->
+            </div>
+        </div>
+    </div>
+</div>
+
 <div id="deleteConfirmModal" class="modal-overlay hidden">
     <div class="modal-content">
         <div class="delete-msg" id="deleteConfirmMsg">確認刪除此筆紀錄？</div>
@@ -607,6 +655,13 @@
     const payerSelect = document.getElementById('payerSelect');
     const myIdentitySelect = document.getElementById('myIdentitySelect');
 
+    // 📊 個人花費總覽彈窗 DOM
+    const personalExpenseModal = document.getElementById('personalExpenseModal');
+    const btnOpenPersonalModal = document.getElementById('btnOpenPersonalModal');
+    const btnClosePersonalModal = document.getElementById('btnClosePersonalModal');
+    const panelIdentitySelect = document.getElementById('panelIdentitySelect');
+    let panelSelectedIdentity = ""; // 面板內部暫存的身分選擇，不寫入 SafeStorage
+
     const btnCurrencyTwd = document.getElementById('btnCurrencyTwd');
     const btnCurrencyJpy = document.getElementById('btnCurrencyJpy');
     const btnSelectAll = document.getElementById('btnSelectAll');
@@ -654,6 +709,19 @@
         }
     }
 
+    // 依面板內選擇的身分更新面板頭像縮寫與問候語（獨立於主頁身分顯示，邏輯與 updateIdentityDisplay 相同）
+    function updatePanelIdentityDisplay(name) {
+        const avatar = document.getElementById('panelIdentityAvatar');
+        const greeting = document.getElementById('panelIdentityGreeting');
+        if (name) {
+            avatar.textContent = name.charAt(0);
+            greeting.textContent = `${name}`;
+        } else {
+            avatar.textContent = '?';
+            greeting.textContent = '請選擇身分';
+        }
+    }
+
     function initUI() {
         const urlParams = new URLSearchParams(window.location.search);
         const urlGroupId = urlParams.get('groupId');
@@ -661,12 +729,16 @@
 
         payerSelect.innerHTML = "";
         myIdentitySelect.innerHTML = '<option value="">[ 請選擇 ]</option>';
+        panelIdentitySelect.innerHTML = '<option value="">[ 請選擇 ]</option>';
         members.forEach(m => {
             const opt1 = document.createElement('option'); opt1.value = m; opt1.textContent = m;
             payerSelect.appendChild(opt1);
 
             const opt2 = document.createElement('option'); opt2.value = m; opt2.textContent = m;
             myIdentitySelect.appendChild(opt2);
+
+            const opt3 = document.createElement('option'); opt3.value = m; opt3.textContent = m;
+            panelIdentitySelect.appendChild(opt3);
         });
 
         const savedIdentity = SafeStorage.getItem('okinawa_my_identity');
@@ -761,6 +833,141 @@
     });
 
     btnCloseModal.addEventListener('click', () => expenseModal.classList.add('hidden'));
+
+    // ==========================================
+    // 📊 個人花費總覽彈窗邏輯
+    // ==========================================
+
+    // 取得指定身分「有參與分攤」的花費項目，並附上該身分在每筆項目中的分攤金額（原始幣別）
+    function getPersonalExpenseItems(identity) {
+        if (!identity) return [];
+        return cacheAllExpenses
+            .filter(exp => exp.splitWith.includes(identity))
+            .map(exp => {
+                const currency = exp.currency || "TWD";
+                const myShare = exp.amount / exp.splitWith.length;
+                return { ...exp, currency, myShare };
+            });
+    }
+
+    // 渲染加總卡片：TWD／JPY 小計（僅在該幣別有花費時顯示）+ 換算 TWD 後總計
+    function renderPersonalSummary(items) {
+        const summaryCard = document.getElementById('personalSummaryCard');
+
+        let twdSubtotal = 0, jpySubtotal = 0;
+        items.forEach(it => {
+            if (it.currency === "JPY") jpySubtotal += it.myShare;
+            else twdSubtotal += it.myShare;
+        });
+        const totalTwd = twdSubtotal + jpySubtotal * JPY_TO_TWD_RATE;
+
+        let subtotalRowsHTML = "";
+        if (twdSubtotal > 0) {
+            subtotalRowsHTML += `
+                <div style="font-size:12px; color:var(--text-muted);">
+                    <span style="color:var(--primary-color); font-weight:bold;">TWD 小計</span>
+                    <span style="margin-left:8px; font-weight:bold;">NT$ ${formatMoney(twdSubtotal)}</span>
+                </div>`;
+        }
+        if (jpySubtotal > 0) {
+            const twdEquivalent = jpySubtotal * JPY_TO_TWD_RATE;
+            subtotalRowsHTML += `
+                <div style="font-size:12px; color:var(--text-muted);">
+                    <span style="color:var(--primary-color); font-weight:bold;">JPY 小計</span>
+                    <span style="margin-left:8px; font-weight:bold;">JPY￥ ${formatMoney(jpySubtotal)}</span>
+                    <span style="margin-left:4px;">（≈ NT$ ${formatMoney(twdEquivalent)}）</span>
+                </div>`;
+        }
+
+        summaryCard.innerHTML = `
+            <div style="display:flex; justify-content:space-between; align-items:baseline;">
+                <span style="font-size:13px; color:var(--text-muted);">總花費（換算 TWD）</span>
+                <span style="font-size:22px; font-weight:800; color:var(--accent-color);">NT$ ${formatMoney(totalTwd)}</span>
+            </div>
+            <div style="margin-top:10px; padding-top:10px; border-top:1px solid var(--border-color); display:flex; flex-direction:column; gap:4px;">
+                ${subtotalRowsHTML}
+            </div>
+            <div style="font-size:11px; color:var(--text-muted); margin-top:8px;">加總金額保留一位小數，供對照個別項目使用</div>
+        `;
+    }
+
+    // 渲染個人花費項目清單：沿用主列表卡片樣式（class 相同），拿掉編輯/刪除按鈕，
+    // 金額改為「分攤後金額」為主、「原始金額」為輔，外幣多一行換算金額
+    function renderPersonalExpenseList(items) {
+        const listContainer = document.getElementById('personalExpenseList');
+        const sorted = [...items].sort((a, b) => b.createdAt - a.createdAt);
+
+        listContainer.innerHTML = sorted.map(exp => {
+            const curSign = CURRENCY_CONFIG[exp.currency].symbol;
+            // 換算金額針對「分攤後金額」計算，並緊接在分攤後金額下方；原始金額純粹當參考，往下移
+            const shareTwdMemo = exp.currency === "JPY"
+                ? `<span class="expense-twd-inline-memo">≈ NT$ ${formatMoney(exp.myShare * JPY_TO_TWD_RATE)}</span>`
+                : "";
+            const originalMemoRow = `<span class="expense-twd-inline-memo">原始金額 ${curSign} ${formatMoney(exp.amount)}</span>`;
+
+            return `
+                <div class="expense-list-item">
+                    <div class="expense-info-left">
+                        <div class="expense-title-row">
+                            <span class="expense-item-name">${exp.item}</span>
+                            <div class="expense-amount-block">
+                                <span class="expense-item-amount">${curSign} ${formatMoney(exp.myShare)}</span>
+                                ${shareTwdMemo}
+                                ${originalMemoRow}
+                            </div>
+                        </div>
+                        <span class="expense-sub-details">👤 付款人：${exp.payer} <br> 👥 分攤人員：${exp.splitWith.join(', ')}</span>
+                    </div>
+                </div>`;
+        }).join('');
+    }
+
+    // 個人花費面板主渲染函式：依 panelSelectedIdentity 決定顯示狀態
+    function renderPersonalExpensePanel() {
+        const emptyState = document.getElementById('personalEmptyState');
+        const summaryCard = document.getElementById('personalSummaryCard');
+        const listContainer = document.getElementById('personalExpenseList');
+
+        if (!panelSelectedIdentity) {
+            emptyState.textContent = "請先選擇身分";
+            emptyState.classList.remove('hidden');
+            summaryCard.classList.add('hidden');
+            listContainer.innerHTML = "";
+            return;
+        }
+
+        const items = getPersonalExpenseItems(panelSelectedIdentity);
+
+        if (items.length === 0) {
+            emptyState.textContent = `${panelSelectedIdentity} 尚無消費紀錄`;
+            emptyState.classList.remove('hidden');
+            summaryCard.classList.add('hidden');
+            listContainer.innerHTML = "";
+            return;
+        }
+
+        emptyState.classList.add('hidden');
+        summaryCard.classList.remove('hidden');
+        renderPersonalSummary(items);
+        renderPersonalExpenseList(items);
+    }
+
+    btnOpenPersonalModal.addEventListener('click', () => {
+        // 開啟時，預設帶入主頁「目前顯示」的身分（不是讀 localStorage，避免跟主頁畫面不一致）
+        panelSelectedIdentity = myIdentitySelect.value;
+        panelIdentitySelect.value = panelSelectedIdentity;
+        updatePanelIdentityDisplay(panelSelectedIdentity);
+        renderPersonalExpensePanel();
+        personalExpenseModal.classList.remove('hidden');
+    });
+
+    btnClosePersonalModal.addEventListener('click', () => personalExpenseModal.classList.add('hidden'));
+
+    panelIdentitySelect.addEventListener('change', (e) => {
+        panelSelectedIdentity = e.target.value;
+        updatePanelIdentityDisplay(panelSelectedIdentity);
+        renderPersonalExpensePanel();
+    });
 
     // ==========================================
     // 💸 還款紀錄彈窗邏輯
